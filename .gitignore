@@ -6,3 +6,5 @@ out/
 prisma/migrations/
 *.log
 .DS_Store
+.vercel
+.env*.local

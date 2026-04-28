@@ -6,10 +6,68 @@ import { Eye, EyeOff } from 'lucide-react'
 
 export default function RegisterPage() {
   const router = useRouter()
+  const [accountType, setAccountType] = useState('user')
   const [showPassword, setShowPassword] = useState(false)
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
+    setError('')
+    setSuccess('')
+
+    const normalizedEmail = email.trim().toLowerCase()
+
+    if (!name.trim() || !normalizedEmail || !password) {
+      setError('All fields are required.')
+      return
+    }
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.')
+      return
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.')
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: normalizedEmail,
+          password,
+          role: accountType === 'tech' ? 'TECH' : 'USER',
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data?.error || 'Unable to create account.')
+        setIsSubmitting(false)
+        return
+      }
+
+      setSuccess('Account created. Redirecting to sign in...')
+      setTimeout(() => {
+        router.push('/login')
+      }, 700)
+    } catch {
+      setError('Server error. Please try again.')
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -25,31 +83,52 @@ export default function RegisterPage() {
           </svg>
         </div>
         <h1 className="font-display text-2xl font-semibold text-[#2C1A23]">Create Account</h1>
-        <p className="text-[#7a5a67] text-sm mt-1">Registration is temporarily disabled</p>
+        <p className="text-[#7a5a67] text-sm mt-1">Create your Beauty Book account</p>
       </div>
 
       <div className="w-full max-w-sm bg-white rounded-3xl border border-[#F4C0D1] p-6">
+        <div className="mb-4 rounded-xl border border-[#F4C0D1] bg-[#fdf6f9] p-1 grid grid-cols-2 gap-1">
+          <button
+            type="button"
+            onClick={() => setAccountType('user')}
+            className={`rounded-lg py-2 text-xs font-medium transition-colors ${
+              accountType === 'user' ? 'bg-white text-[#2C1A23] border border-[#F4C0D1]' : 'text-[#7a5a67]'
+            }`}
+          >
+            Everyday User
+          </button>
+          <button
+            type="button"
+            onClick={() => setAccountType('tech')}
+            className={`rounded-lg py-2 text-xs font-medium transition-colors ${
+              accountType === 'tech' ? 'bg-white text-[#2C1A23] border border-[#F4C0D1]' : 'text-[#7a5a67]'
+            }`}
+          >
+            Tech
+          </button>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="text-xs font-medium text-[#7a5a67] uppercase tracking-wider">Full Name</label>
             <input
               type="text"
-              disabled
-              value=""
-              onChange={() => {}}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               placeholder="Your name"
               className="w-full mt-1.5 px-4 py-3 bg-[#fdf6f9] border border-[#F4C0D1] rounded-xl text-sm outline-none focus:border-[#D4537E] transition-colors"
+              required
             />
           </div>
           <div>
             <label className="text-xs font-medium text-[#7a5a67] uppercase tracking-wider">Email</label>
             <input
               type="email"
-              disabled
-              value=""
-              onChange={() => {}}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               className="w-full mt-1.5 px-4 py-3 bg-[#fdf6f9] border border-[#F4C0D1] rounded-xl text-sm outline-none focus:border-[#D4537E] transition-colors"
+              required
             />
           </div>
           <div>
@@ -57,11 +136,11 @@ export default function RegisterPage() {
             <div className="relative mt-1.5">
               <input
                 type={showPassword ? 'text' : 'password'}
-                disabled
-                value=""
-                onChange={() => {}}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="Min. 8 characters"
                 className="w-full px-4 py-3 bg-[#fdf6f9] border border-[#F4C0D1] rounded-xl text-sm outline-none focus:border-[#D4537E] transition-colors pr-10"
+                required
               />
               <button
                 type="button"
@@ -73,25 +152,30 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          <div className="text-xs text-[#7a5a67] bg-[#fdf6f9] px-3 py-2 rounded-lg border border-[#F4C0D1]">
-            Auth is temporarily disabled. Continue as guest to explore features.
+          <div>
+            <label className="text-xs font-medium text-[#7a5a67] uppercase tracking-wider">Confirm Password</label>
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Re-enter password"
+              className="w-full mt-1.5 px-4 py-3 bg-[#fdf6f9] border border-[#F4C0D1] rounded-xl text-sm outline-none focus:border-[#D4537E] transition-colors"
+              required
+            />
+          </div>
+
+          <div className={`text-xs px-3 py-2 rounded-lg border ${error ? 'text-[#b42318] bg-[#fff1f3] border-[#f3b7c3]' : success ? 'text-green-700 bg-[#eefcf3] border-[#bde8cc]' : 'text-[#7a5a67] bg-[#fdf6f9] border-[#F4C0D1]'}`}>
+            {error || success || 'Use at least 8 characters for your password.'}
           </div>
 
           <button
             type="submit"
-            disabled
-            className="w-full bg-[#D4537E] text-white py-3.5 rounded-xl font-medium opacity-60 cursor-not-allowed"
+            disabled={isSubmitting}
+            className="w-full bg-[#D4537E] text-white py-3.5 rounded-xl font-medium disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            Create Account (Disabled)
+            {isSubmitting ? 'Creating Account...' : 'Create Account'}
           </button>
         </form>
-
-        <button
-          onClick={() => router.push('/')}
-          className="w-full mt-3 bg-white text-[#D4537E] py-3 rounded-xl font-medium border border-[#D4537E]"
-        >
-          Continue as Guest
-        </button>
 
         <div className="mt-5 text-center text-sm text-[#7a5a67]">
           Already have an account?{' '}

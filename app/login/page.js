@@ -42,6 +42,7 @@ export default function LoginPage() {
       redirect: false,
       email: email.trim().toLowerCase(),
       password,
+      accountType,
       callbackUrl: destination,
     })
 
