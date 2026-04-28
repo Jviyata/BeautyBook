@@ -24,27 +24,6 @@ export const authOptions = {
 
         const normalizedEmail = credentials.email.trim().toLowerCase()
 
-        // Handle demo mode
-        if (normalizedEmail === 'demo@beautybook.demo' && credentials.password === 'DemoPass123!') {
-          let demoUser = await prisma.user.findUnique({
-            where: { email: normalizedEmail },
-          })
-
-          // Create demo user if it doesn't exist
-          if (!demoUser) {
-            demoUser = await prisma.user.create({
-              data: {
-                email: normalizedEmail,
-                name: 'Demo User',
-                password: await bcrypt.hash('DemoPass123!', 10),
-                role: credentials.accountType === 'tech' ? 'TECH' : 'USER',
-                emailVerified: new Date(),
-              },
-            })
-          }
-
-          return { id: demoUser.id, email: demoUser.email, name: demoUser.name, image: demoUser.image, role: demoUser.role }
-        }
 
         const user = await prisma.user.findUnique({
           where: { email: normalizedEmail },
