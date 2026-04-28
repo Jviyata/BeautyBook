@@ -3,6 +3,22 @@ const bcrypt = require('bcryptjs')
 
 const prisma = new PrismaClient()
 
+const CORE_SERVICES = ['Nails', 'Hair', 'Lashes', 'Brows', 'Makeup', 'Tan']
+
+const HOURS_TEMPLATE = [
+  { day: 'Monday', open: '9:00 AM', close: '6:00 PM' },
+  { day: 'Tuesday', open: '9:00 AM', close: '6:00 PM' },
+  { day: 'Wednesday', open: '9:00 AM', close: '7:00 PM' },
+  { day: 'Thursday', open: '9:00 AM', close: '7:00 PM' },
+  { day: 'Friday', open: '9:00 AM', close: '8:00 PM' },
+  { day: 'Saturday', open: '10:00 AM', close: '5:00 PM' },
+  { day: 'Sunday', open: 'Closed', close: 'Closed' },
+]
+
+function slugify(text) {
+  return text.toLowerCase().replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-')
+}
+
 async function main() {
   // Seed demo user
   const hash = await bcrypt.hash('password123', 10)
@@ -95,26 +111,69 @@ async function main() {
     },
   ]
 
+  const cityPool = ['West Lafayette', 'Lafayette', 'Carmel', 'Fishers', 'Noblesville']
+  const statePool = ['IN', 'IN', 'IN', 'IN', 'IN']
+
+  const extrasByService = {
+    Nails: ['Manicure', 'Pedicure', 'Gel'],
+    Hair: ['Hair Color', 'Blowout', 'Styling'],
+    Lashes: ['Classic Lashes', 'Hybrid Lashes', 'Volume Lashes'],
+    Brows: ['Brow Shaping', 'Brow Tint', 'Brow Lamination'],
+    Makeup: ['Bridal', 'Soft Glam', 'Event Makeup'],
+    Tan: ['Spray Tan', 'Rapid Tan', 'Custom Tan'],
+  }
+
+  const baseCountByService = CORE_SERVICES.reduce((acc, service) => {
+    acc[service] = pros.filter(p => p.services.includes(service)).length
+    return acc
+  }, {})
+
+  CORE_SERVICES.forEach((service, index) => {
+    const needed = Math.max(0, 10 - baseCountByService[service])
+
+    for (let i = 1; i <= needed; i++) {
+      const city = cityPool[(index + i) % cityPool.length]
+      const state = statePool[(index + i) % statePool.length]
+      const offset = (index + 1) * 0.01 + i * 0.002
+
+      pros.push({
+        name: `${service} Collective ${i}`,
+        bio: `Specialized ${service.toLowerCase()} studio focused on clean technique, consistency, and client-first service.`,
+        city,
+        state,
+        lat: 40.42 + offset,
+        lng: -86.9 + offset,
+        services: [service, ...extrasByService[service]],
+        priceMin: 40 + index * 10,
+        priceMax: 95 + index * 20,
+        phone: `(765) 555-${String(6000 + index * 100 + i).padStart(4, '0')}`,
+        avgRating: 4.2 + (i % 5) * 0.15,
+        reviewCount: 12 + i * 3,
+        gallery: [],
+      })
+    }
+  })
+
   for (const pro of pros) {
+    const id = slugify(pro.name)
+
     const created = await prisma.professional.upsert({
-      where: { id: pro.name.toLowerCase().replace(/\s+/g, '-') },
-      update: {},
+      where: { id },
+      update: {
+        ...pro,
+      },
       create: {
         ...pro,
-        id: pro.name.toLowerCase().replace(/\s+/g, '-'),
+        id,
       },
     })
 
+    await prisma.hours.deleteMany({
+      where: { professionalId: created.id },
+    })
+
     await prisma.hours.createMany({
-      data: [
-        { professionalId: created.id, day: 'Monday', open: '9:00 AM', close: '6:00 PM' },
-        { professionalId: created.id, day: 'Tuesday', open: '9:00 AM', close: '6:00 PM' },
-        { professionalId: created.id, day: 'Wednesday', open: '9:00 AM', close: '7:00 PM' },
-        { professionalId: created.id, day: 'Thursday', open: '9:00 AM', close: '7:00 PM' },
-        { professionalId: created.id, day: 'Friday', open: '9:00 AM', close: '8:00 PM' },
-        { professionalId: created.id, day: 'Saturday', open: '10:00 AM', close: '5:00 PM' },
-        { professionalId: created.id, day: 'Sunday', open: 'Closed', close: 'Closed' },
-      ],
+      data: HOURS_TEMPLATE.map(h => ({ ...h, professionalId: created.id })),
       skipDuplicates: true,
     })
   }

@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Search, MapPin, Star, SlidersHorizontal } from 'lucide-react'
+import { Search, MapPin, Star, SlidersHorizontal, Bookmark } from 'lucide-react'
 import Link from 'next/link'
 import Navbar from '@/components/Navbar'
 import { ServiceIcons, ServiceColors } from '@/lib/serviceIcons'
@@ -27,6 +27,7 @@ function SearchContent() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [saved, setSaved] = useState({})
 
   async function fetchResults(p = 1) {
     setLoading(true)
@@ -200,44 +201,62 @@ function SearchContent() {
                   const Icon = ServiceIcons[service]
                   const colors = ServiceColors[service]
                   return (
-                    <Link
-                      key={pro.id}
-                      href={`/professionals/${pro.id}`}
-                      className="bg-white rounded-2xl border border-[#e8e8e8] overflow-hidden hover:shadow-md transition-shadow"
-                    >
-                      <div className="h-40 bg-gradient-to-br from-[#f4f4f4] to-[#ececec] flex items-center justify-center">
-                        {Icon && (
-                          <div className="w-20 h-20" style={{ color: colors?.dark || '#666' }}>
-                            <Icon />
+                    <div key={pro.id} className="soft-panel rounded-3xl overflow-hidden fade-up">
+                      <Link href={`/professionals/${pro.id}`} className="block relative">
+                        <div className="h-40 bg-gradient-to-br from-[#f4f4f4] to-[#ececec] flex items-center justify-center">
+                          {Icon && (
+                            <div className="w-20 h-20" style={{ color: colors?.dark || '#999' }}>
+                              <Icon />
+                            </div>
+                          )}
+                        </div>
+                      </Link>
+                      <div className="p-3.5">
+                        <div className="flex items-center gap-2">
+                          <div className="story-ring shrink-0">
+                            <div className="w-8 h-8 rounded-full bg-[#1f1f1f] text-white flex items-center justify-center text-xs font-bold border border-white">
+                              {pro.name?.charAt(0)}
+                            </div>
                           </div>
-                        )}
-                      </div>
-                      <div className="p-4">
-                        <h3 className="font-semibold text-sm truncate">{pro.name}</h3>
-                        <p className="text-xs text-[#7b7b7b] mt-1 truncate">{pro.city}, {pro.state}</p>
+                          <div className="flex-1 min-w-0">
+                            <Link href={`/professionals/${pro.id}`}>
+                              <h3 className="font-semibold text-sm truncate hover:text-[#e00707] transition-colors">{pro.name}</h3>
+                            </Link>
+                            <p className="text-[11px] text-[#888] truncate">{pro.city}, {pro.state}</p>
+                          </div>
+                          <button
+                            onClick={() => setSaved(prev => ({ ...prev, [pro.id]: !prev[pro.id] }))}
+                            className="w-8 h-8 flex items-center justify-center rounded-full bg-[#fafaf9] border border-[#e7e5e4] hover:bg-white transition-colors"
+                            aria-label="Save professional"
+                          >
+                            <Bookmark size={14} className={saved[pro.id] ? 'fill-[#1f1f1f] text-[#1f1f1f]' : 'text-[#78716c]'} />
+                          </button>
+                        </div>
 
-                        <div className="mt-3 flex items-center justify-between border-t border-[#f0f0f0] pt-2">
-                          <div className="flex items-center gap-1 text-xs">
+                        <div className="mt-2.5 flex items-center justify-between">
+                          <div className="flex items-center gap-0.5 text-xs">
                             {pro.avgRating ? (
                               <>
-                                <Star size={12} className="text-[#1f1f1f] fill-[#1f1f1f]" />
-                                <span className="font-semibold">{pro.avgRating}</span>
-                                <span className="text-[#9b9b9b]">({pro.reviewCount})</span>
+                                {Array.from({ length: 5 }).map((_, i) => (
+                                  <Star key={i} size={10} className={i < Math.floor(pro.avgRating) ? 'fill-[#e00707] text-[#e00707]' : 'text-[#ddd]'} />
+                                ))}
+                                <span className="font-semibold ml-1">{pro.avgRating}</span>
+                                <span className="text-[#bbb] ml-0.5">({pro.reviewCount})</span>
                               </>
                             ) : (
-                              <span className="text-[#9b9b9b]">No ratings</span>
+                              <span className="text-[#bbb]">No ratings yet</span>
                             )}
                           </div>
-                          <span className="text-xs text-[#666]">${pro.priceMin}–${pro.priceMax}</span>
+                          <span className="text-[11px] font-semibold bg-[#fafaf9] border border-[#e7e5e4] px-2 py-0.5 rounded-full text-[#555]">${pro.priceMin}–${pro.priceMax}</span>
                         </div>
 
                         <div className="flex flex-wrap gap-1 mt-2">
                           {pro.services?.slice(0, 2).map(s => (
-                            <span key={s} className="text-[10px] bg-[#f3f3f3] text-[#555] px-2 py-1 rounded-md">{s}</span>
+                            <span key={s} className="text-[10px] bg-[#fafaf9] text-[#57534e] px-2 py-0.5 rounded-full border border-[#e7e5e4]">{s}</span>
                           ))}
                         </div>
                       </div>
-                    </Link>
+                    </div>
                   )
                 })}
               </div>

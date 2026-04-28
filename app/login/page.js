@@ -7,9 +7,25 @@ import { Eye, EyeOff } from 'lucide-react'
 export default function LoginPage() {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   function handleSubmit(e) {
     e.preventDefault()
+    setError('')
+    setIsSubmitting(true)
+
+    const normalizedEmail = email.trim().toLowerCase()
+
+    if (normalizedEmail === 'demo@beautybook.com' && password === 'password123') {
+      router.push('/tech')
+      return
+    }
+
+    setError('Invalid email or password.')
+    setIsSubmitting(false)
   }
 
   return (
@@ -26,7 +42,7 @@ export default function LoginPage() {
           </svg>
         </div>
         <h1 className="font-display text-2xl font-semibold text-[#2C1A23]">Beauty Book</h1>
-        <p className="text-[#7a5a67] text-sm mt-1">Sign in is temporarily disabled</p>
+        <p className="text-[#7a5a67] text-sm mt-1">Sign in to continue</p>
       </div>
 
       <div className="w-full max-w-sm bg-white rounded-3xl border border-[#F4C0D1] p-6">
@@ -35,23 +51,24 @@ export default function LoginPage() {
             <label className="text-xs font-medium text-[#7a5a67] uppercase tracking-wider">Email</label>
             <input
               type="email"
-              disabled
-              value=""
-              onChange={() => {}}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               className="w-full mt-1.5 px-4 py-3 bg-[#fdf6f9] border border-[#F4C0D1] rounded-xl text-sm outline-none focus:border-[#D4537E] transition-colors"
+              required
             />
           </div>
+
           <div>
             <label className="text-xs font-medium text-[#7a5a67] uppercase tracking-wider">Password</label>
             <div className="relative mt-1.5">
               <input
                 type={showPassword ? 'text' : 'password'}
-                disabled
-                value=""
-                onChange={() => {}}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 className="w-full px-4 py-3 bg-[#fdf6f9] border border-[#F4C0D1] rounded-xl text-sm outline-none focus:border-[#D4537E] transition-colors pr-10"
+                required
               />
               <button
                 type="button"
@@ -63,25 +80,18 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div className="text-xs text-[#7a5a67] bg-[#fdf6f9] px-3 py-2 rounded-lg border border-[#F4C0D1]">
-            Auth is temporarily disabled. Continue as guest to explore features.
+          <div className={`text-xs px-3 py-2 rounded-lg border ${error ? 'text-[#b42318] bg-[#fff1f3] border-[#f3b7c3]' : 'text-[#7a5a67] bg-[#fdf6f9] border-[#F4C0D1]'}`}>
+            {error || 'Use your account credentials to open the tech dashboard.'}
           </div>
 
           <button
             type="submit"
-            disabled
-            className="w-full bg-[#D4537E] text-white py-3.5 rounded-xl font-medium opacity-60 cursor-not-allowed"
+            disabled={isSubmitting}
+            className="w-full bg-[#D4537E] text-white py-3.5 rounded-xl font-medium disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            Sign In (Disabled)
+            {isSubmitting ? 'Signing In...' : 'Sign In'}
           </button>
         </form>
-
-        <button
-          onClick={() => router.push('/')}
-          className="w-full mt-3 bg-white text-[#D4537E] py-3 rounded-xl font-medium border border-[#D4537E]"
-        >
-          Continue as Guest
-        </button>
 
         <div className="mt-5 text-center text-sm text-[#7a5a67]">
           Don't have an account?{' '}

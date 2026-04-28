@@ -87,69 +87,92 @@ export default function ProfessionalPage() {
           <ArrowLeft size={14} /> Back
         </button>
 
-        <section className="bg-white border border-[#e8e8e8] rounded-3xl overflow-hidden">
-          <div className="h-56 bg-[#efefef] flex items-center justify-center">
-            {pro.image ? (
+        <section className="soft-panel rounded-3xl overflow-hidden">
+          <div className="h-44 bg-gradient-to-br from-stone-100 via-neutral-50 to-stone-200 relative">
+            {pro.image && (
               <img src={pro.image} alt={pro.name} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-24 h-24 rounded-full bg-[#1f1f1f] text-white flex items-center justify-center text-3xl font-display">
-                {pro.name.charAt(0)}
-              </div>
             )}
+            <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent" />
           </div>
 
-          <div className="p-5 sm:p-6 grid lg:grid-cols-[1fr_320px] gap-6">
-            <div>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h1 className="font-display text-3xl leading-tight">{pro.name}</h1>
-                  <p className="mt-1 text-sm text-[#666] inline-flex items-center gap-1"><MapPin size={13} /> {pro.city}, {pro.state}</p>
+          <div className="px-5 pb-5">
+            <div className="flex items-end justify-between -mt-10 mb-3">
+              <div className="story-ring">
+                <div className="w-20 h-20 rounded-full bg-[#1f1f1f] text-white flex items-center justify-center text-3xl font-display border border-white shadow-md">
+                  {pro.name.charAt(0)}
                 </div>
+              </div>
+              <div className="flex items-center gap-2 mb-1">
                 <button
                   onClick={toggleFavorite}
                   disabled={favLoading}
-                  className="w-10 h-10 rounded-full border border-[#e8e8e8] flex items-center justify-center"
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold border transition-all ${
+                    favorited
+                      ? 'bg-[#1f1f1f] text-white border-[#1f1f1f]'
+                      : 'bg-white text-[#1f1f1f] border-[#e7e5e4] hover:border-[#d6d3d1]'
+                  }`}
                 >
-                  <Heart size={16} className={favorited ? 'fill-[#1f1f1f] text-[#1f1f1f]' : 'text-[#666]'} />
+                  <Heart size={14} className={favorited ? 'fill-white text-white' : 'text-[#666]'} />
+                  {favorited ? 'Saved' : 'Save'}
                 </button>
               </div>
-
-              {pro.bio && <p className="text-sm text-[#666] mt-4 leading-relaxed">{pro.bio}</p>}
-
-              <div className="flex flex-wrap gap-2 mt-4">
-                {pro.services?.map(s => (
-                  <span key={s} className="px-2.5 py-1 rounded-md text-xs bg-[#f3f3f3] text-[#555]">{s}</span>
-                ))}
-              </div>
             </div>
 
-            <div className="bg-[#fafafa] rounded-2xl border border-[#ececec] p-4 h-fit">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-[#666]">Price Range</p>
-                <p className="text-sm font-semibold">${pro.priceMin} – ${pro.priceMax}</p>
-              </div>
+            <h1 className="font-display text-2xl leading-tight">{pro.name}</h1>
+            <p className="mt-0.5 text-sm text-[#666] inline-flex items-center gap-1">
+              <MapPin size={12} /> {pro.city}, {pro.state}
+            </p>
+
+            <div className="flex gap-5 mt-4 pt-4 border-t border-[#f0f0f0]">
               {pro.avgRating && (
-                <div className="flex items-center gap-1 mt-2 text-sm">
-                  <Star size={13} className="fill-[#1f1f1f] text-[#1f1f1f]" />
-                  <span className="font-semibold">{pro.avgRating}</span>
-                  <span className="text-[#8b8b8b]">({pro.reviewCount} reviews)</span>
+                <div className="text-center">
+                  <p className="font-bold text-base">{pro.avgRating}</p>
+                  <p className="text-[11px] text-[#888]">Rating</p>
                 </div>
               )}
-              <button className="w-full mt-4 bg-[#1f1f1f] text-white rounded-xl py-3 text-sm font-semibold">
-                Request Booking
-              </button>
+              <div className="text-center">
+                <p className="font-bold text-base">{pro.reviewCount || 0}</p>
+                <p className="text-[11px] text-[#888]">Reviews</p>
+              </div>
+              <div className="text-center">
+                <p className="font-bold text-base">${pro.priceMin}–{pro.priceMax}</p>
+                <p className="text-[11px] text-[#888]">Price</p>
+              </div>
+              {pro.gallery?.length > 0 && (
+                <div className="text-center">
+                  <p className="font-bold text-base">{pro.gallery.length}</p>
+                  <p className="text-[11px] text-[#888]">Posts</p>
+                </div>
+              )}
             </div>
+
+            {pro.bio && <p className="text-sm text-[#666] mt-3 leading-relaxed">{pro.bio}</p>}
+
+            <div className="flex flex-wrap gap-1.5 mt-3">
+              {pro.services?.map(s => (
+                <span key={s} className="px-3 py-1 rounded-full text-xs font-medium bg-[#fafaf9] border border-[#e7e5e4] text-[#555]">{s}</span>
+              ))}
+            </div>
+
+            <button className="w-full mt-4 bg-[#1f1f1f] text-white rounded-xl py-3 text-sm font-semibold shadow hover:bg-[#111827] transition-colors">
+              Request Booking
+            </button>
           </div>
         </section>
 
         <section className="grid lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 space-y-4">
             {pro.gallery?.length > 0 && (
-              <div className="bg-white border border-[#e8e8e8] rounded-2xl p-4">
-                <h2 className="font-semibold mb-3">Portfolio</h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              <div className="soft-panel rounded-2xl overflow-hidden">
+                <div className="px-4 pt-4 pb-2 flex items-center gap-2">
+                  <div className="w-1 h-4 rounded-full bg-[#1f1f1f]" />
+                  <h2 className="font-semibold text-sm">Portfolio</h2>
+                </div>
+                <div className="grid grid-cols-3 gap-0.5">
                   {pro.gallery.map((img, i) => (
-                    <img key={i} src={img} alt="" className="aspect-square rounded-xl object-cover bg-[#efefef]" />
+                    <div key={i} className="aspect-square overflow-hidden bg-[#f3f3f3]">
+                      <img src={img} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+                    </div>
                   ))}
                 </div>
               </div>
@@ -183,21 +206,23 @@ export default function ProfessionalPage() {
               ) : (
                 <div className="space-y-3">
                   {pro.reviews?.map(r => (
-                    <div key={r.id} className="rounded-xl border border-[#efefef] p-3">
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <div className="w-8 h-8 rounded-full bg-[#efefef] flex items-center justify-center text-sm font-medium text-[#444]">
-                          {r.user?.name?.charAt(0)}
+                    <div key={r.id} className="rounded-2xl border border-[#f0f0f0] bg-[#fafaf9] p-3.5">
+                      <div className="flex items-center gap-2.5 mb-2">
+                        <div className="story-ring shrink-0">
+                          <div className="w-9 h-9 rounded-full bg-[#1f1f1f] text-white flex items-center justify-center text-sm font-bold border border-white">
+                            {r.user?.name?.charAt(0)}
+                          </div>
                         </div>
-                        <div>
-                          <div className="text-sm font-medium">{r.user?.name}</div>
-                          <div className="flex gap-0.5">
+                        <div className="flex-1">
+                          <div className="text-sm font-semibold">{r.user?.name}</div>
+                          <div className="flex gap-0.5 mt-0.5">
                             {Array.from({ length: 5 }).map((_, i) => (
-                              <Star key={i} size={10} className={i < r.rating ? 'fill-[#1f1f1f] text-[#1f1f1f]' : 'text-[#ddd]'} />
+                              <Star key={i} size={10} className={i < r.rating ? 'fill-[#e00707] text-[#e00707]' : 'text-[#ddd]'} />
                             ))}
                           </div>
                         </div>
                       </div>
-                      {r.comment && <p className="text-sm text-[#666]">{r.comment}</p>}
+                      {r.comment && <p className="text-sm text-[#555] leading-relaxed">{r.comment}</p>}
                     </div>
                   ))}
                 </div>
