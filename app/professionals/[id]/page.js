@@ -24,6 +24,7 @@ export default function ProfessionalPage() {
   const [draftMessage, setDraftMessage] = useState('')
   const [sendingMessage, setSendingMessage] = useState(false)
   const [messageError, setMessageError] = useState('')
+  const [bookingLoading, setBookingLoading] = useState(false)
 
   useEffect(() => {
     fetch(`/api/professionals/${id}`)
@@ -115,6 +116,42 @@ export default function ProfessionalPage() {
       setMessageError('Could not send message.')
     } finally {
       setSendingMessage(false)
+    }
+  }
+
+  async function handleRequestBooking() {
+    if (!session?.user) {
+      router.push('/login')
+      return
+    }
+
+    const when = window.prompt('Enter booking date/time (YYYY-MM-DD HH:mm)')
+    if (!when) return
+
+    const normalized = when.includes('T') ? when : when.replace(' ', 'T')
+    const date = new Date(normalized)
+    if (Number.isNaN(date.getTime())) {
+      alert('Please enter a valid date/time, e.g. 2026-05-10 14:00')
+      return
+    }
+
+    setBookingLoading(true)
+    try {
+      const res = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ professionalId: id, date: date.toISOString() }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        alert(data?.error || 'Could not create booking')
+        return
+      }
+      alert('Booking request sent! Check Profile → Calendar.')
+    } catch {
+      alert('Could not create booking')
+    } finally {
+      setBookingLoading(false)
     }
   }
 
@@ -214,8 +251,12 @@ export default function ProfessionalPage() {
               ))}
             </div>
 
-            <button className="w-full mt-4 bg-[#1f1f1f] text-white rounded-xl py-3 text-sm font-semibold shadow hover:bg-[#111827] transition-colors">
-              Request Booking
+            <button
+              onClick={handleRequestBooking}
+              disabled={bookingLoading}
+              className="w-full mt-4 bg-[#1f1f1f] text-white rounded-xl py-3 text-sm font-semibold shadow hover:bg-[#111827] transition-colors disabled:opacity-60"
+            >
+              {bookingLoading ? 'Requesting...' : 'Request Booking'}
             </button>
           </div>
         </section>

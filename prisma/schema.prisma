@@ -24,6 +24,7 @@ model User {
 
   reviews   Review[]
   favorites Favorite[]
+    bookings  Booking[]
 }
 
 model Professional {
@@ -49,6 +50,7 @@ model Professional {
   reviews     Review[]
   favorites   Favorite[]
   hours       Hours[]
+    bookings    Booking[]
 
   avgRating   Float?
   reviewCount Int    @default(0)
@@ -72,6 +74,7 @@ model Review {
 model Favorite {
   id             String       @id @default(cuid())
   createdAt      DateTime     @default(now())
+    pinned         Boolean      @default(false)
 
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId         String
@@ -82,12 +85,26 @@ model Favorite {
   @@unique([userId, professionalId])
 }
 
-model Hours {
-  id             String       @id @default(cuid())
-  day            String
-  open           String
-  close          String
+  model Booking {
+    id             String       @id @default(cuid())
+    date           DateTime
+    notes          String?
+    status         String       @default("pending")
+    createdAt      DateTime     @default(now())
 
-  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
-  professionalId String
+    user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+    userId         String
+
+    professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+    professionalId String
+  }
+
+  model Hours {
+    id             String       @id @default(cuid())
+    day            String
+    open           String
+    close          String
+
+    professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+    professionalId String
 }

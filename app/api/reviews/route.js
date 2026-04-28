@@ -41,3 +41,21 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }
+
+  // GET /api/reviews?mine=1 — current user's reviews
+  export async function GET(req) {
+    try {
+      const session = await getSession()
+      if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+      const reviews = await prisma.review.findMany({
+        where: { userId: session.user.id },
+        include: { professional: { select: { id: true, name: true, city: true } } },
+        orderBy: { createdAt: 'desc' },
+      })
+      return NextResponse.json(reviews)
+    } catch (err) {
+      console.error(err)
+      return NextResponse.json({ error: 'Server error' }, { status: 500 })
+    }
+  }
