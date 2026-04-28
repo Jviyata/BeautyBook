@@ -48,7 +48,7 @@ export default function DemoPage() {
 
           {/* View Professional Profiles */}
           <Link
-            href="/demo/professionals"
+            href="/demo/search"
             className="group bg-white rounded-3xl border border-[#F4C0D1] p-8 hover:border-[#D4537E] transition-colors hover:shadow-lg"
           >
             <div className="w-12 h-12 bg-[#FBEAF0] rounded-2xl flex items-center justify-center mb-4 group-hover:bg-[#D4537E] transition-colors">
