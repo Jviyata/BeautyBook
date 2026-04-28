@@ -55,6 +55,29 @@ export default function LoginPage() {
     setIsSubmitting(false)
   }
 
+  async function handleDemoLogin() {
+    setError('')
+    setIsSubmitting(true)
+    const destination = accountType === 'tech' ? '/tech' : callbackUrl
+    setPostLoginRedirect(destination)
+
+    const result = await signIn('credentials', {
+      redirect: false,
+      email: 'demo@beautybook.demo',
+      password: 'DemoPass123!',
+      accountType,
+      callbackUrl: destination,
+    })
+
+    if (result?.ok) {
+      router.push(destination)
+      return
+    }
+
+    setError('Error accessing demo. Please try again.')
+    setIsSubmitting(false)
+  }
+
   return (
     <div className="min-h-screen bg-[#fdf6f9] flex flex-col items-center justify-center px-6">
       {/* Logo */}
@@ -149,7 +172,18 @@ export default function LoginPage() {
         </div>
 
         <div className="mt-4 pt-4 border-t border-[#F4C0D1]">
-          <p className="text-xs text-center text-[#bba0ab]">Use your registered account to sign in.</p>
+          <p className="text-xs text-center text-[#bba0ab] mb-2">Use your registered account to sign in.</p>
+          <p className="text-xs text-center text-[#bba0ab]">
+            Want to explore?{' '}
+            <button
+              type="button"
+              onClick={handleDemoLogin}
+              disabled={isSubmitting}
+              className="text-[#D4537E] font-medium hover:underline disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              Try Demo
+            </button>
+          </p>
         </div>
       </div>
     </div>

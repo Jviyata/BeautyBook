@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Eye, EyeOff } from 'lucide-react'
+import { signIn } from 'next-auth/react'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -15,6 +16,29 @@ export default function RegisterPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  async function handleDemoLogin() {
+    setError('')
+    setSuccess('')
+    setIsSubmitting(true)
+    const destination = accountType === 'tech' ? '/tech' : '/'
+
+    const result = await signIn('credentials', {
+      redirect: false,
+      email: 'demo@beautybook.demo',
+      password: 'DemoPass123!',
+      accountType,
+      callbackUrl: destination,
+    })
+
+    if (result?.ok) {
+      router.push(destination)
+      return
+    }
+
+    setError('Error accessing demo. Please try again.')
+    setIsSubmitting(false)
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -182,6 +206,20 @@ export default function RegisterPage() {
           <Link href="/login" className="text-[#D4537E] font-medium hover:underline">
             Sign In
           </Link>
+        </div>
+
+        <div className="mt-4 pt-4 border-t border-[#F4C0D1]">
+          <p className="text-xs text-center text-[#bba0ab]">
+            Want to explore first?{' '}
+            <button
+              type="button"
+              onClick={handleDemoLogin}
+              disabled={isSubmitting}
+              className="text-[#D4537E] font-medium hover:underline disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              Try Demo
+            </button>
+          </p>
         </div>
       </div>
     </div>
