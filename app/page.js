@@ -1,7 +1,8 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, Sparkles, Star, ArrowRight, Bookmark, TrendingUp } from 'lucide-react'
+import { useSession } from 'next-auth/react'
+import { Search, Sparkles, Star, ArrowRight, Heart, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
 import Navbar from '@/components/Navbar'
 import ChatBot from '@/components/ChatBot'
@@ -61,10 +62,36 @@ const FEATURED = [
 
 export default function HomePage() {
   const router = useRouter()
+  const { data: session, status } = useSession()
   const [query, setQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState('All')
   const [showChat, setShowChat] = useState(false)
   const [saved, setSaved] = useState({})
+
+  useEffect(() => {
+    async function loadSaved() {
+      if (status === 'authenticated') {
+        try {
+          const res = await fetch('/api/favorites')
+          const data = await res.json()
+          if (!res.ok || !Array.isArray(data)) return
+          setSaved(Object.fromEntries(data.map((pro) => [pro.id, true])))
+        } catch {
+          // Keep the current state when favorites fail to load.
+        }
+        return
+      }
+
+      if (status === 'unauthenticated') {
+        const raw = localStorage.getItem('guestFavorites')
+        const ids = raw ? JSON.parse(raw) : []
+        const safeIds = Array.isArray(ids) ? ids : []
+        setSaved(Object.fromEntries(safeIds.map((savedId) => [savedId, true])))
+      }
+    }
+
+    loadSaved()
+  }, [status])
 
   function handleSearch(e) {
     e.preventDefault()
@@ -74,8 +101,32 @@ export default function HomePage() {
     router.push(`/search?${params.toString()}`)
   }
 
-  function toggleSave(id) {
-    setSaved(prev => ({ ...prev, [id]: !prev[id] }))
+  async function toggleSave(id) {
+    if (!session?.user) {
+      const raw = localStorage.getItem('guestFavorites')
+      const ids = raw ? JSON.parse(raw) : []
+      const safeIds = Array.isArray(ids) ? ids : []
+      const nextIds = safeIds.includes(id)
+        ? safeIds.filter((savedId) => savedId !== id)
+        : [...safeIds, id]
+
+      localStorage.setItem('guestFavorites', JSON.stringify(nextIds))
+      setSaved((prev) => ({ ...prev, [id]: nextIds.includes(id) }))
+      return
+    }
+
+    try {
+      const res = await fetch('/api/favorites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ professionalId: id }),
+      })
+      const data = await res.json()
+      if (!res.ok) return
+      setSaved((prev) => ({ ...prev, [id]: Boolean(data.favorited) }))
+    } catch {
+      // Keep the current UI state when save fails.
+    }
   }
 
   return (
@@ -102,7 +153,7 @@ export default function HomePage() {
             </div>
             <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3 max-w-3xl">
               <div className="flex-1 flex items-center gap-3 bg-white/95 backdrop-blur rounded-2xl px-5 py-4 sm:py-5 shadow-lg min-h-[64px] sm:min-h-[72px]">
-                <Search size={18} className="text-[#e00707] shrink-0" />
+                <Search size={18} className="text-[var(--pink)] shrink-0" />
                 <input
                   value={query}
                   onChange={e => setQuery(e.target.value)}
@@ -112,7 +163,7 @@ export default function HomePage() {
               </div>
               <button
                 type="submit"
-                className="bg-[#e00707] text-white rounded-2xl px-8 py-4 sm:py-5 text-base font-semibold shadow-lg hover:bg-[#b60000] transition-colors min-h-[64px] sm:min-h-[72px]"
+                className="accent-cta rounded-2xl px-8 py-4 sm:py-5 text-base font-semibold transition-colors min-h-[64px] sm:min-h-[72px]"
               >
                 Search
               </button>
@@ -135,10 +186,10 @@ export default function HomePage() {
               <button
                 key={label}
                 onClick={() => router.push(`/search?services=${label}`)}
-                className="rounded-2xl border border-[#e7e5e4] bg-white px-4 py-5 text-center hover:border-[#d6d3d1] hover:shadow-sm transition-all"
+                className="rounded-2xl border border-[#f3d7e3] bg-white px-4 py-5 text-center hover:border-[var(--pink-pale)] hover:shadow-sm transition-all"
               >
-                <div className="w-16 h-16 mx-auto rounded-full bg-[#f5f5f4] border border-[#e7e5e4] flex items-center justify-center mb-4">
-                  <div className="w-8 h-8 text-[#44403c]">
+                <div className="w-16 h-16 mx-auto rounded-full bg-[#fff4f8] border border-[#f3d7e3] flex items-center justify-center mb-4">
+                  <div className="w-8 h-8 text-[var(--pink-dark)]">
                     {(() => {
                       const Icon = ServiceIcons[label]
                       return Icon ? <Icon /> : null
@@ -159,8 +210,8 @@ export default function HomePage() {
               onClick={() => setActiveCategory(label)}
               className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-all border ${
                 activeCategory === label
-                  ? 'bg-[#1f2937] text-white border-[#1f2937] shadow-sm'
-                  : 'bg-white text-[#57534e] border-[#e7e5e4] hover:border-[#d6d3d1]'
+                  ? 'bg-[#fff1f7] text-[var(--pink-ink)] border-[var(--pink-pale)] shadow-sm'
+                  : 'bg-white text-[#57534e] border-[#efd9e3] hover:border-[var(--pink-pale)]'
               }`}
             >
               {label}
@@ -185,7 +236,7 @@ export default function HomePage() {
                   <Link
                     key={pro.id}
                     href={`/professionals/${pro.id}`}
-                    className="block rounded-2xl border border-[#e7e5e4] bg-white p-3 hover:shadow-sm transition-shadow"
+                    className="block rounded-2xl border border-[#f0d9e3] bg-white p-3 hover:shadow-sm transition-shadow"
                   >
                     <div className="flex items-center gap-2.5">
                       <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${colors.bg} flex items-center justify-center shrink-0`}>
@@ -200,20 +251,20 @@ export default function HomePage() {
                           e.preventDefault()
                           toggleSave(pro.id)
                         }}
-                        className="w-8 h-8 flex items-center justify-center rounded-full bg-[#fafaf9] border border-[#e7e5e4] hover:bg-white transition-colors"
+                        className={`heart-toggle w-8 h-8 flex items-center justify-center rounded-full transition-all ${saved[pro.id] ? 'active' : ''}`}
                         aria-label="Save profile"
                       >
-                        <Bookmark size={14} className={`transition-all ${saved[pro.id] ? 'fill-[#1f1f1f] text-[#1f1f1f]' : 'text-[#78716c]'}`} />
+                        <Heart size={14} className={`transition-all ${saved[pro.id] ? 'heart-pop fill-[var(--pink)] text-[var(--pink)]' : 'text-[#b76b89]'}`} />
                       </button>
                     </div>
                     <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-[#f0f0f0]">
                       <div className="flex items-center gap-0.5 text-xs">
-                        <Star size={11} className="fill-[#e00707] text-[#e00707]" />
+                        <Star size={11} className="fill-[var(--pink)] text-[var(--pink)]" />
                         <span className="font-semibold">{pro.rating}</span>
                         <span className="text-[#a8a29e]">({pro.reviews})</span>
                       </div>
                       {pro.trending && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#44403c] bg-[#fafaf9] border border-[#e7e5e4] rounded-full px-2 py-0.5">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[var(--pink-ink)] bg-[#fff4f8] border border-[#f3d7e3] rounded-full px-2 py-0.5">
                           <TrendingUp size={10} /> Recommended
                         </span>
                       )}
@@ -253,8 +304,8 @@ export default function HomePage() {
                           <p className="text-[11px] text-[#78716c]">Result with {item.tech}</p>
                         </div>
                       </div>
-                      <div className="rounded-full bg-white/92 backdrop-blur px-2.5 py-1.5 border border-[#e7e5e4] flex items-center gap-1">
-                        <Star size={12} className="fill-[#e00707] text-[#e00707]" />
+                      <div className="rounded-full bg-white/92 backdrop-blur px-2.5 py-1.5 border border-[#f3d7e3] flex items-center gap-1">
+                        <Star size={12} className="fill-[var(--pink)] text-[var(--pink)]" />
                         <span className="text-xs font-semibold text-[#1f1f1f]">{item.rating}.0</span>
                       </div>
                     </div>
@@ -266,7 +317,7 @@ export default function HomePage() {
                         <h3 className="text-sm font-semibold text-[#1f1f1f]">{item.title}</h3>
                         <p className="text-xs text-[#78716c] mt-1">Client review</p>
                       </div>
-                      <span className="text-[11px] font-medium text-[#57534e] bg-[#fafaf9] border border-[#e7e5e4] rounded-full px-2.5 py-1">
+                      <span className="text-[11px] font-medium text-[var(--pink-ink)] bg-[#fff4f8] border border-[#f3d7e3] rounded-full px-2.5 py-1">
                         {item.tech}
                       </span>
                     </div>
@@ -280,7 +331,7 @@ export default function HomePage() {
                         <Star
                           key={index}
                           size={12}
-                          className={index < item.rating ? 'fill-[#e00707] text-[#e00707]' : 'text-[#d6d3d1]'}
+                          className={index < item.rating ? 'fill-[var(--pink)] text-[var(--pink)]' : 'text-[#d6d3d1]'}
                         />
                       ))}
                     </div>
@@ -294,7 +345,7 @@ export default function HomePage() {
         <section>
           <button
             onClick={() => setShowChat(true)}
-            className="w-full flex items-center gap-3 bg-[#1f1f1f] text-white rounded-2xl px-5 py-4 shadow-md hover:bg-[#111827] transition-colors"
+            className="accent-cta w-full flex items-center gap-3 rounded-2xl px-5 py-4 transition-colors"
           >
             <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center shrink-0">
               <Sparkles size={18} />
@@ -312,4 +363,3 @@ export default function HomePage() {
     </div>
   )
 }
-

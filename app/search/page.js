@@ -1,7 +1,8 @@
 'use client'
 import { useState, useEffect, Suspense } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { Search, MapPin, Star, SlidersHorizontal, Bookmark } from 'lucide-react'
+import { useSession } from 'next-auth/react'
+import { Search, MapPin, Star, SlidersHorizontal, Heart } from 'lucide-react'
 import Link from 'next/link'
 import Navbar from '@/components/Navbar'
 import { ServiceIcons, ServiceColors } from '@/lib/serviceIcons'
@@ -13,6 +14,7 @@ function SearchContent() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const { data: session, status } = useSession()
 
   const [query, setQuery] = useState(searchParams.get('q') || '')
   const [city, setCity] = useState(searchParams.get('city') || '')
@@ -30,6 +32,31 @@ function SearchContent() {
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [saved, setSaved] = useState({})
+
+  useEffect(() => {
+    async function loadSaved() {
+      if (status === 'authenticated') {
+        try {
+          const res = await fetch('/api/favorites')
+          const data = await res.json()
+          if (!res.ok || !Array.isArray(data)) return
+          setSaved(Object.fromEntries(data.map((pro) => [pro.id, true])))
+        } catch {
+          // Keep existing UI state if favorites cannot be loaded.
+        }
+        return
+      }
+
+      if (status === 'unauthenticated') {
+        const raw = localStorage.getItem('guestFavorites')
+        const ids = raw ? JSON.parse(raw) : []
+        const safeIds = Array.isArray(ids) ? ids : []
+        setSaved(Object.fromEntries(safeIds.map((savedId) => [savedId, true])))
+      }
+    }
+
+    loadSaved()
+  }, [status])
 
   async function fetchResults(nextFilters = {}) {
     const p = nextFilters.page ?? page
@@ -118,19 +145,47 @@ function SearchContent() {
     )
   }
 
+  async function toggleSave(professionalId) {
+    if (!session?.user) {
+      const raw = localStorage.getItem('guestFavorites')
+      const ids = raw ? JSON.parse(raw) : []
+      const safeIds = Array.isArray(ids) ? ids : []
+      const nextIds = safeIds.includes(professionalId)
+        ? safeIds.filter((id) => id !== professionalId)
+        : [...safeIds, professionalId]
+
+      localStorage.setItem('guestFavorites', JSON.stringify(nextIds))
+      setSaved((prev) => ({ ...prev, [professionalId]: nextIds.includes(professionalId) }))
+      return
+    }
+
+    try {
+      const res = await fetch('/api/favorites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ professionalId }),
+      })
+      const data = await res.json()
+      if (!res.ok) return
+      setSaved((prev) => ({ ...prev, [professionalId]: Boolean(data.favorited) }))
+    } catch {
+      // Leave the current state unchanged if save fails.
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#f7f7f7]">
       <Navbar active="search" />
 
       <main className="page-shell">
         <div className="grid lg:grid-cols-[290px_1fr] gap-4">
-          <aside className="bg-white border border-[#e8e8e8] rounded-2xl p-4 h-fit lg:sticky lg:top-24">
+          <aside className="bg-white border border-[#f0d9e3] rounded-2xl p-4 h-fit lg:sticky lg:top-24 shadow-[0_10px_24px_rgba(232,93,147,0.06)]">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold">Filters</h2>
               <button
                 type="button"
                 onClick={() => setShowFilters(!showFilters)}
-                className="lg:hidden p-2 rounded-lg bg-[#f2f2f2] text-[#555]"
+                className="lg:hidden p-2 rounded-lg bg-[#fff4f8] text-[var(--pink-ink)]"
               >
                 <SlidersHorizontal size={14} />
               </button>
@@ -139,8 +194,8 @@ function SearchContent() {
             <form onSubmit={handleSearch} className={`space-y-3 ${showFilters ? 'block' : 'hidden lg:block'}`}>
               <label className="block">
                 <span className="text-xs text-[#777]">Service or keyword</span>
-                <div className="mt-1.5 flex items-center gap-2 rounded-xl border border-[#ececec] bg-[#fafafa] px-3 py-2.5">
-                  <Search size={14} className="text-[#666]" />
+                <div className="mt-1.5 flex items-center gap-2 rounded-xl border border-[#f0d9e3] bg-[#fff8fb] px-3 py-2.5">
+                  <Search size={14} className="text-[var(--pink)]" />
                   <input
                     value={query}
                     onChange={e => setQuery(e.target.value)}
@@ -152,8 +207,8 @@ function SearchContent() {
 
               <label className="block">
                 <span className="text-xs text-[#777]">Location</span>
-                <div className="mt-1.5 flex items-center gap-2 rounded-xl border border-[#ececec] bg-[#fafafa] px-3 py-2.5">
-                  <MapPin size={14} className="text-[#666]" />
+                <div className="mt-1.5 flex items-center gap-2 rounded-xl border border-[#f0d9e3] bg-[#fff8fb] px-3 py-2.5">
+                  <MapPin size={14} className="text-[var(--pink)]" />
                   <input
                     value={city}
                     onChange={e => setCity(e.target.value)}
@@ -173,8 +228,8 @@ function SearchContent() {
                       onClick={() => toggleService(s)}
                       className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
                         selectedServices.includes(s)
-                          ? 'bg-[#1f1f1f] text-white'
-                          : 'bg-[#f3f3f3] text-[#555]'
+                          ? 'bg-[#fff1f7] text-[var(--pink-ink)] border border-[#f3d7e3]'
+                          : 'bg-[#fdf7fa] text-[#555] border border-transparent'
                       }`}
                     >
                       {s}
@@ -192,7 +247,7 @@ function SearchContent() {
                   step={10}
                   value={maxPrice}
                   onChange={e => setMaxPrice(+e.target.value)}
-                  className="w-full mt-1 accent-[#1f1f1f]"
+                  className="w-full mt-1 accent-[var(--pink)]"
                 />
               </div>
 
@@ -205,7 +260,7 @@ function SearchContent() {
                   step={0.5}
                   value={minRating}
                   onChange={e => setMinRating(+e.target.value)}
-                  className="w-full mt-1 accent-[#1f1f1f]"
+                  className="w-full mt-1 accent-[var(--pink)]"
                 />
               </div>
 
@@ -214,7 +269,7 @@ function SearchContent() {
                 <select
                   value={style}
                   onChange={e => setStyle(e.target.value)}
-                  className="w-full mt-1.5 rounded-xl border border-[#ececec] bg-white px-3 py-2 text-sm"
+                  className="w-full mt-1.5 rounded-xl border border-[#f0d9e3] bg-white px-3 py-2 text-sm"
                 >
                   {STYLES.map(option => (
                     <option key={option} value={option}>{option}</option>
@@ -222,15 +277,15 @@ function SearchContent() {
                 </select>
               </div>
 
-              <button className="w-full bg-[#1f1f1f] text-white rounded-xl py-2.5 text-sm font-semibold">
+              <button className="accent-cta w-full rounded-xl py-2.5 text-sm font-semibold">
                 Apply filters
               </button>
             </form>
           </aside>
 
           <section>
-            <div className="bg-white border border-[#e8e8e8] rounded-2xl p-4 mb-4 flex items-center justify-between">
-              <h1 className="font-display text-2xl">Search results</h1>
+            <div className="bg-white border border-[#f0d9e3] rounded-2xl p-4 mb-4 flex items-center justify-between shadow-[0_10px_24px_rgba(232,93,147,0.05)]">
+              <h1 className="font-display text-2xl text-[var(--pink-ink)]">Search results</h1>
               <p className="text-sm text-[#7b7b7b]">{total} professionals</p>
             </div>
 
@@ -271,16 +326,16 @@ function SearchContent() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <Link href={`/professionals/${pro.id}`}>
-                              <h3 className="font-semibold text-sm truncate hover:text-[#e00707] transition-colors">{pro.name}</h3>
+                              <h3 className="font-semibold text-sm truncate hover:text-[var(--pink)] transition-colors">{pro.name}</h3>
                             </Link>
                             <p className="text-[11px] text-[#888] truncate">{pro.city}, {pro.state}</p>
                           </div>
                           <button
-                            onClick={() => setSaved(prev => ({ ...prev, [pro.id]: !prev[pro.id] }))}
-                            className="w-8 h-8 flex items-center justify-center rounded-full bg-[#fafaf9] border border-[#e7e5e4] hover:bg-white transition-colors"
+                            onClick={() => toggleSave(pro.id)}
+                            className={`heart-toggle w-8 h-8 flex items-center justify-center rounded-full transition-all ${saved[pro.id] ? 'active' : ''}`}
                             aria-label="Save professional"
                           >
-                            <Bookmark size={14} className={saved[pro.id] ? 'fill-[#1f1f1f] text-[#1f1f1f]' : 'text-[#78716c]'} />
+                            <Heart size={14} className={saved[pro.id] ? 'heart-pop fill-[var(--pink)] text-[var(--pink)]' : 'text-[#b76b89]'} />
                           </button>
                         </div>
 
@@ -289,7 +344,7 @@ function SearchContent() {
                             {pro.avgRating ? (
                               <>
                                 {Array.from({ length: 5 }).map((_, i) => (
-                                  <Star key={i} size={10} className={i < Math.floor(pro.avgRating) ? 'fill-[#e00707] text-[#e00707]' : 'text-[#ddd]'} />
+                                  <Star key={i} size={10} className={i < Math.floor(pro.avgRating) ? 'fill-[var(--pink)] text-[var(--pink)]' : 'text-[#ddd]'} />
                                 ))}
                                 <span className="font-semibold ml-1">{pro.avgRating}</span>
                                 <span className="text-[#bbb] ml-0.5">({pro.reviewCount})</span>
@@ -298,12 +353,12 @@ function SearchContent() {
                               <span className="text-[#bbb]">No ratings yet</span>
                             )}
                           </div>
-                          <span className="text-[11px] font-semibold bg-[#fafaf9] border border-[#e7e5e4] px-2 py-0.5 rounded-full text-[#555]">${pro.priceMin}–${pro.priceMax}</span>
+                          <span className="text-[11px] font-semibold bg-[#fff4f8] border border-[#f3d7e3] px-2 py-0.5 rounded-full text-[var(--pink-ink)]">${pro.priceMin}–${pro.priceMax}</span>
                         </div>
 
                         <div className="flex flex-wrap gap-1 mt-2">
                           {pro.services?.slice(0, 2).map(s => (
-                            <span key={s} className="text-[10px] bg-[#fafaf9] text-[#57534e] px-2 py-0.5 rounded-full border border-[#e7e5e4]">{s}</span>
+                            <span key={s} className="text-[10px] bg-[#fff8fb] text-[var(--pink-ink)] px-2 py-0.5 rounded-full border border-[#f3d7e3]">{s}</span>
                           ))}
                         </div>
                       </div>
@@ -324,8 +379,8 @@ function SearchContent() {
                     }}
                     className={`w-9 h-9 rounded-lg text-sm font-semibold ${
                       page === i + 1
-                        ? 'bg-[#1f1f1f] text-white'
-                        : 'bg-white border border-[#e8e8e8] text-[#666]'
+                        ? 'accent-cta text-white'
+                        : 'bg-white border border-[#f0d9e3] text-[var(--pink-ink)]'
                     }`}
                   >
                     {i + 1}

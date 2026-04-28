@@ -4,10 +4,12 @@
 @tailwind utilities;
 
 :root {
-  --pink: #e00707;
-  --pink-light: #fff1f1;
-  --pink-dark: #b60000;
-  --pink-pale: #ffd2d2;
+  --pink: #e85d93;
+  --pink-light: #fff3f8;
+  --pink-dark: #c53f76;
+  --pink-pale: #f7c9dc;
+  --pink-rose: #fff8fb;
+  --pink-ink: #7f294d;
 }
 
 * {
@@ -16,7 +18,10 @@
 
 body {
   font-family: 'DM Sans', sans-serif;
-  background: #f5f5f4;
+  background:
+    radial-gradient(circle at top, rgba(232, 93, 147, 0.1), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(247, 201, 220, 0.28), transparent 24%),
+    #f8f3f5;
   color: #1f1f1f;
   padding-top: 60px;
   padding-bottom: 68px; /* space for bottom nav on mobile */
@@ -77,7 +82,7 @@ body {
 
 /* Subtle profile ring */
 .story-ring {
-  background: linear-gradient(180deg, #e7e5e4, #d6d3d1);
+  background: linear-gradient(180deg, var(--pink-pale), var(--pink));
   padding: 2px;
   border-radius: 9999px;
 }
@@ -103,9 +108,37 @@ body {
 }
 
 .soft-panel {
-  background: linear-gradient(180deg, #ffffff, #fcfcfc);
-  border: 1px solid #e7e5e4;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 247, 251, 0.98));
+  border: 1px solid rgba(232, 93, 147, 0.12);
+  box-shadow: 0 14px 30px rgba(127, 41, 77, 0.08);
+}
+
+.accent-cta {
+  background: linear-gradient(135deg, var(--pink), var(--pink-dark));
+  color: white;
+  box-shadow: 0 12px 24px rgba(232, 93, 147, 0.24);
+}
+
+.accent-cta:hover {
+  filter: saturate(1.05) brightness(0.98);
+}
+
+.accent-tab {
+  border-color: var(--pink);
+  color: var(--pink-ink);
+}
+
+.heart-toggle {
+  border: 1px solid rgba(232, 93, 147, 0.18);
+  background: var(--pink-rose);
+  color: #b76b89;
+}
+
+.heart-toggle.active {
+  background: linear-gradient(135deg, var(--pink-light), #ffffff);
+  color: var(--pink-dark);
+  border-color: rgba(232, 93, 147, 0.35);
+  box-shadow: 0 10px 18px rgba(232, 93, 147, 0.14);
 }
 
 /* Shimmer skeleton */
@@ -118,4 +151,3 @@ body {
   background-size: 800px 100%;
   animation: shimmer 1.4s infinite linear;
 }
-

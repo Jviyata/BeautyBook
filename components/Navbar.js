@@ -1,11 +1,11 @@
 'use client'
 import Link from 'next/link'
-import { Home, Search, Bookmark, User } from 'lucide-react'
+import { Home, Search, Heart, User } from 'lucide-react'
 
 const items = [
   { id: 'home',    label: 'Home',    href: '/',        Icon: Home },
   { id: 'search',  label: 'Explore', href: '/search',  Icon: Search },
-  { id: 'saved',   label: 'Saved',   href: '/saved',   Icon: Bookmark },
+  { id: 'saved',   label: 'Saved',   href: '/saved',   Icon: Heart },
   { id: 'profile', label: 'Profile', href: '/profile', Icon: User },
 ]
 
@@ -14,7 +14,7 @@ export default function Navbar({ active }) {
     <>
       <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#e8e8e8] bg-white/95 backdrop-blur-md">
         <nav className="w-full px-4 h-[60px] flex items-center justify-between">
-          <Link href="/" className="font-display text-xl tracking-tight text-[#1f1f1f]">
+          <Link href="/" className="font-display text-xl tracking-tight text-[#7f294d]">
             Beauty Book
           </Link>
 
@@ -27,8 +27,8 @@ export default function Navbar({ active }) {
                   href={href}
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
                     isActive
-                      ? 'text-[#111827] bg-[#f5f5f4]'
-                      : 'text-[#6f6f6f] hover:text-[#1f1f1f] hover:bg-[#fafaf9]'
+                      ? 'text-[#7f294d] bg-[#fff1f7]'
+                      : 'text-[#7c6d74] hover:text-[#7f294d] hover:bg-[#fff7fa]'
                   }`}
                 >
                   <Icon size={15} strokeWidth={isActive ? 2.2 : 1.8} />
@@ -52,9 +52,9 @@ export default function Navbar({ active }) {
               <Icon
                 size={22}
                 strokeWidth={isActive ? 2.4 : 1.7}
-                className={isActive ? 'text-[#111827]' : 'text-[#8a8a8a]'}
+                className={isActive ? 'fill-[#f7c9dc] text-[#c53f76]' : 'text-[#8a8a8a]'}
               />
-              <span className={`text-[10px] font-medium ${isActive ? 'text-[#111827]' : 'text-[#8a8a8a]'}`}>
+              <span className={`text-[10px] font-medium ${isActive ? 'text-[#c53f76]' : 'text-[#8a8a8a]'}`}>
                 {label}
               </span>
             </Link>

@@ -8,6 +8,11 @@ import ReviewForm from '@/components/ReviewForm'
 
 const DAY_ORDER = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
 
+function toLocalDateTimeValue(date = new Date()) {
+  const localDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000))
+  return localDate.toISOString().slice(0, 16)
+}
+
 export default function ProfessionalPage() {
   const { id } = useParams()
   const router = useRouter()
@@ -25,6 +30,10 @@ export default function ProfessionalPage() {
   const [sendingMessage, setSendingMessage] = useState(false)
   const [messageError, setMessageError] = useState('')
   const [bookingLoading, setBookingLoading] = useState(false)
+  const [bookingDate, setBookingDate] = useState('')
+  const [bookingNotes, setBookingNotes] = useState('')
+  const [bookingError, setBookingError] = useState('')
+  const [bookingSuccess, setBookingSuccess] = useState('')
 
   useEffect(() => {
     fetch(`/api/professionals/${id}`)
@@ -119,19 +128,29 @@ export default function ProfessionalPage() {
     }
   }
 
-  async function handleRequestBooking() {
+  async function handleRequestBooking(e) {
+    e.preventDefault()
+    setBookingError('')
+    setBookingSuccess('')
+
     if (!session?.user) {
       router.push('/login')
       return
     }
 
-    const when = window.prompt('Enter booking date/time (YYYY-MM-DD HH:mm)')
-    if (!when) return
+    if (!bookingDate) {
+      setBookingError('Please choose an appointment date and time.')
+      return
+    }
 
-    const normalized = when.includes('T') ? when : when.replace(' ', 'T')
-    const date = new Date(normalized)
+    const date = new Date(bookingDate)
     if (Number.isNaN(date.getTime())) {
-      alert('Please enter a valid date/time, e.g. 2026-05-10 14:00')
+      setBookingError('Please choose a valid appointment date and time.')
+      return
+    }
+
+    if (date.getTime() < Date.now()) {
+      setBookingError('Appointments cannot be scheduled in the past.')
       return
     }
 
@@ -140,16 +159,22 @@ export default function ProfessionalPage() {
       const res = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ professionalId: id, date: date.toISOString() }),
+        body: JSON.stringify({
+          professionalId: id,
+          date: date.toISOString(),
+          notes: bookingNotes.trim() || undefined,
+        }),
       })
       const data = await res.json()
       if (!res.ok) {
-        alert(data?.error || 'Could not create booking')
+        setBookingError(data?.error || 'Could not create booking.')
         return
       }
-      alert('Booking request sent! Check Profile → Calendar.')
+      setBookingSuccess('Booking request sent! Check Profile → Calendar.')
+      setBookingDate('')
+      setBookingNotes('')
     } catch {
-      alert('Could not create booking')
+      setBookingError('Could not create booking.')
     } finally {
       setBookingLoading(false)
     }
@@ -205,11 +230,11 @@ export default function ProfessionalPage() {
                   disabled={favLoading}
                   className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold border transition-all ${
                     favorited
-                      ? 'bg-[#1f1f1f] text-white border-[#1f1f1f]'
-                      : 'bg-white text-[#1f1f1f] border-[#e7e5e4] hover:border-[#d6d3d1]'
+                      ? 'bg-[var(--pink)] text-white border-[var(--pink)] shadow-[0_10px_18px_rgba(232,93,147,0.22)]'
+                      : 'bg-white text-[var(--pink-ink)] border-[#f0d9e3] hover:border-[var(--pink-pale)]'
                   }`}
                 >
-                  <Heart size={14} className={favorited ? 'fill-white text-white' : 'text-[#666]'} />
+                  <Heart size={14} className={favorited ? 'fill-white text-white' : 'text-[var(--pink)]'} />
                   {favorited ? 'Saved' : 'Save'}
                 </button>
               </div>
@@ -224,21 +249,21 @@ export default function ProfessionalPage() {
               {pro.avgRating && (
                 <div className="text-center">
                   <p className="font-bold text-base">{pro.avgRating}</p>
-                  <p className="text-[11px] text-[#888]">Rating</p>
+                <p className="text-[11px] text-[var(--pink-ink)]">Rating</p>
                 </div>
               )}
               <div className="text-center">
                 <p className="font-bold text-base">{pro.reviewCount || 0}</p>
-                <p className="text-[11px] text-[#888]">Reviews</p>
+                <p className="text-[11px] text-[var(--pink-ink)]">Reviews</p>
               </div>
               <div className="text-center">
                 <p className="font-bold text-base">${pro.priceMin}–{pro.priceMax}</p>
-                <p className="text-[11px] text-[#888]">Price</p>
+                <p className="text-[11px] text-[var(--pink-ink)]">Price</p>
               </div>
               {pro.gallery?.length > 0 && (
                 <div className="text-center">
                   <p className="font-bold text-base">{pro.gallery.length}</p>
-                  <p className="text-[11px] text-[#888]">Posts</p>
+                  <p className="text-[11px] text-[var(--pink-ink)]">Posts</p>
                 </div>
               )}
             </div>
@@ -247,17 +272,50 @@ export default function ProfessionalPage() {
 
             <div className="flex flex-wrap gap-1.5 mt-3">
               {pro.services?.map(s => (
-                <span key={s} className="px-3 py-1 rounded-full text-xs font-medium bg-[#fafaf9] border border-[#e7e5e4] text-[#555]">{s}</span>
+                <span key={s} className="px-3 py-1 rounded-full text-xs font-medium bg-[#fff4f8] border border-[#f3d7e3] text-[var(--pink-ink)]">{s}</span>
               ))}
             </div>
 
-            <button
-              onClick={handleRequestBooking}
-              disabled={bookingLoading}
-              className="w-full mt-4 bg-[#1f1f1f] text-white rounded-xl py-3 text-sm font-semibold shadow hover:bg-[#111827] transition-colors disabled:opacity-60"
-            >
-              {bookingLoading ? 'Requesting...' : 'Request Booking'}
-            </button>
+            <form onSubmit={handleRequestBooking} className="mt-4 space-y-3 rounded-2xl border border-[#e7e5e4] bg-[#fafaf9] p-4">
+              <div>
+                <label htmlFor="booking-date" className="mb-1.5 block text-sm font-semibold text-[#1f1f1f]">
+                  Appointment date and time
+                </label>
+                <input
+                  id="booking-date"
+                  type="datetime-local"
+                  value={bookingDate}
+                  min={toLocalDateTimeValue()}
+                  onChange={(e) => setBookingDate(e.target.value)}
+                  className="w-full rounded-xl border border-[#e7e5e4] bg-white px-3 py-2 text-sm outline-none focus:border-[#1f1f1f]"
+                />
+                <p className="mt-1 text-xs text-[#777]">Select a future time to request your appointment.</p>
+              </div>
+
+              <div>
+                <label htmlFor="booking-notes" className="mb-1.5 block text-sm font-semibold text-[#1f1f1f]">
+                  Notes for the technician
+                </label>
+                <textarea
+                  id="booking-notes"
+                  value={bookingNotes}
+                  onChange={(e) => setBookingNotes(e.target.value)}
+                  placeholder="Service details, preferred look, or anything else they should know."
+                  className="min-h-[96px] w-full rounded-xl border border-[#e7e5e4] bg-white px-3 py-2 text-sm outline-none focus:border-[#1f1f1f]"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={bookingLoading}
+                className="accent-cta w-full rounded-xl py-3 text-sm font-semibold transition-colors disabled:opacity-60"
+              >
+                {bookingLoading ? 'Requesting...' : 'Request Booking'}
+              </button>
+
+              {bookingError ? <p className="text-xs text-[#b42318]">{bookingError}</p> : null}
+              {bookingSuccess ? <p className="text-xs text-[#166534]">{bookingSuccess}</p> : null}
+            </form>
           </div>
         </section>
 

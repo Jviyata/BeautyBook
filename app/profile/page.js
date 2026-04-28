@@ -132,21 +132,21 @@ export default function ProfilePage() {
       </div>
 
       <div className="bg-white border-b border-[#ececec] flex">
-        <button onClick={() => setTab('saved')} className={`flex-1 py-3 text-xs border-b-2 ${tab === 'saved' ? 'border-[#1f1f1f]' : 'border-transparent'}`}>Saved</button>
-        <button onClick={() => setTab('reviews')} className={`flex-1 py-3 text-xs border-b-2 ${tab === 'reviews' ? 'border-[#1f1f1f]' : 'border-transparent'}`}>Reviews</button>
-        <button onClick={() => setTab('calendar')} className={`flex-1 py-3 text-xs border-b-2 ${tab === 'calendar' ? 'border-[#1f1f1f]' : 'border-transparent'}`}>Calendar</button>
+        <button onClick={() => setTab('saved')} className={`flex-1 py-3 text-xs border-b-2 ${tab === 'saved' ? 'accent-tab' : 'border-transparent text-[#7a5a67]'}`}>Saved</button>
+        <button onClick={() => setTab('reviews')} className={`flex-1 py-3 text-xs border-b-2 ${tab === 'reviews' ? 'accent-tab' : 'border-transparent text-[#7a5a67]'}`}>Reviews</button>
+        <button onClick={() => setTab('calendar')} className={`flex-1 py-3 text-xs border-b-2 ${tab === 'calendar' ? 'accent-tab' : 'border-transparent text-[#7a5a67]'}`}>Calendar</button>
       </div>
 
       <div className="px-4 py-5">
         {tab === 'saved' && (
           <div className="grid grid-cols-2 gap-3">
             {sortedSaved.map(pro => (
-              <div key={pro.id} className="bg-white rounded-2xl border border-[#ececec] p-3">
+              <div key={pro.id} className="bg-white rounded-2xl border border-[#f0d9e3] p-3">
                 <div className="flex items-center justify-between">
                   <Link href={`/professionals/${pro.id}`} className="text-sm font-medium truncate">{pro.name}</Link>
                   {status === 'authenticated' && (
-                    <button onClick={() => togglePin(pro.id)} aria-label="Pin tech">
-                      <Heart size={14} className={pro.pinned ? 'fill-[#e75480] text-[#e75480]' : 'text-[#bbb]'} />
+                    <button onClick={() => togglePin(pro.id)} aria-label="Favorite tech" className={`heart-toggle rounded-full p-1.5 transition-all ${pro.pinned ? 'active' : ''}`}>
+                      <Heart size={14} className={pro.pinned ? 'fill-[var(--pink)] text-[var(--pink)]' : 'text-[#b76b89]'} />
                     </button>
                   )}
                 </div>

@@ -31,11 +31,20 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Missing professionalId or date' }, { status: 400 })
     }
 
+    const bookingDate = new Date(date)
+    if (Number.isNaN(bookingDate.getTime())) {
+      return NextResponse.json({ error: 'Invalid booking date' }, { status: 400 })
+    }
+
+    if (bookingDate.getTime() < Date.now()) {
+      return NextResponse.json({ error: 'Appointments cannot be scheduled in the past' }, { status: 400 })
+    }
+
     const booking = await prisma.booking.create({
       data: {
         userId: session.user.id,
         professionalId,
-        date: new Date(date),
+        date: bookingDate,
         notes: notes || null,
         status: 'pending',
       },
