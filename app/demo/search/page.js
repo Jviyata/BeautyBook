@@ -19,7 +19,7 @@ const SAMPLE_PROFESSIONALS = [
     priceMax: 75,
     avgRating: 4.8,
     reviewCount: 124,
-    image: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=400&h=400&fit=crop',
+    image: '/demo/sarah-nails.svg',
     bio: 'Professional nail technician with 8 years of experience.',
   },
   {
@@ -32,7 +32,7 @@ const SAMPLE_PROFESSIONALS = [
     priceMax: 85,
     avgRating: 4.9,
     reviewCount: 98,
-    image: 'https://images.unsplash.com/photo-1517457373614-b7152f800fd1?w=400&h=400&fit=crop',
+    image: '/demo/lash-perfect.svg',
     bio: 'Expert in lash extensions and brow shaping.',
   },
   {
@@ -45,7 +45,7 @@ const SAMPLE_PROFESSIONALS = [
     priceMax: 150,
     avgRating: 4.7,
     reviewCount: 156,
-    image: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400&h=400&fit=crop',
+    image: '/demo/glam-hair.svg',
     bio: 'Award-winning hair stylist specializing in color and cuts.',
   },
   {
@@ -58,7 +58,7 @@ const SAMPLE_PROFESSIONALS = [
     priceMax: 55,
     avgRating: 4.6,
     reviewCount: 87,
-    image: 'https://images.unsplash.com/photo-1570158268183-d296b2892211?w=400&h=400&fit=crop',
+    image: '/demo/tan-glow.svg',
     bio: 'Professional spray tanning and cosmetic makeup services.',
   },
 ]
