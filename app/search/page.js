@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Search, MapPin, Star, SlidersHorizontal, Bookmark } from 'lucide-react'
 import Link from 'next/link'
 import Navbar from '@/components/Navbar'
@@ -10,6 +10,8 @@ const SERVICES = ['Nails', 'Hair', 'Lashes', 'Brows', 'Makeup', 'Tan']
 const STYLES = ['Any', 'Natural', 'Glam', 'Bridal', 'Minimal', 'Classic', 'Bold']
 
 function SearchContent() {
+  const router = useRouter()
+  const pathname = usePathname()
   const searchParams = useSearchParams()
 
   const [query, setQuery] = useState(searchParams.get('q') || '')
@@ -17,8 +19,8 @@ function SearchContent() {
   const [selectedServices, setSelectedServices] = useState(
     searchParams.get('services') ? searchParams.get('services').split(',') : []
   )
-  const [maxPrice, setMaxPrice] = useState(500)
-  const [minRating, setMinRating] = useState(0)
+  const [maxPrice, setMaxPrice] = useState(parseInt(searchParams.get('maxPrice') || '500'))
+  const [minRating, setMinRating] = useState(parseFloat(searchParams.get('minRating') || '0'))
   const [style, setStyle] = useState(searchParams.get('style') || 'Any')
   const [showFilters, setShowFilters] = useState(false)
 
@@ -29,16 +31,24 @@ function SearchContent() {
   const [totalPages, setTotalPages] = useState(1)
   const [saved, setSaved] = useState({})
 
-  async function fetchResults(p = 1) {
+  async function fetchResults(nextFilters = {}) {
+    const p = nextFilters.page ?? page
+    const nextQuery = nextFilters.query ?? query
+    const nextCity = nextFilters.city ?? city
+    const nextServices = nextFilters.selectedServices ?? selectedServices
+    const nextMaxPrice = nextFilters.maxPrice ?? maxPrice
+    const nextMinRating = nextFilters.minRating ?? minRating
+    const nextStyle = nextFilters.style ?? style
+
     setLoading(true)
     try {
       const params = new URLSearchParams()
-      if (query) params.set('q', query)
-      if (city) params.set('city', city)
-      if (selectedServices.length) params.set('services', selectedServices.join(','))
-      if (maxPrice < 500) params.set('maxPrice', maxPrice)
-      if (minRating > 0) params.set('minRating', minRating)
-      if (style !== 'Any') params.set('style', style)
+      if (nextQuery) params.set('q', nextQuery)
+      if (nextCity) params.set('city', nextCity)
+      if (nextServices.length) params.set('services', nextServices.join(','))
+      if (nextMaxPrice < 500) params.set('maxPrice', nextMaxPrice)
+      if (nextMinRating > 0) params.set('minRating', nextMinRating)
+      if (nextStyle !== 'Any') params.set('style', nextStyle)
       params.set('page', p)
 
       const res = await fetch(`/api/professionals?${params}`)
@@ -51,12 +61,53 @@ function SearchContent() {
     }
   }
 
-  useEffect(() => { fetchResults(1) }, [])
+  useEffect(() => {
+    const nextQuery = searchParams.get('q') || ''
+    const nextCity = searchParams.get('city') || ''
+    const nextServices = searchParams.get('services')
+      ? searchParams.get('services').split(',').filter(Boolean)
+      : []
+    const nextMaxPrice = parseInt(searchParams.get('maxPrice') || '500')
+    const nextMinRating = parseFloat(searchParams.get('minRating') || '0')
+    const nextStyle = searchParams.get('style') || 'Any'
+    const nextPage = parseInt(searchParams.get('page') || '1')
+
+    setQuery(nextQuery)
+    setCity(nextCity)
+    setSelectedServices(nextServices)
+    setMaxPrice(nextMaxPrice)
+    setMinRating(nextMinRating)
+    setStyle(nextStyle)
+    setPage(nextPage)
+
+    fetchResults({
+      page: nextPage,
+      query: nextQuery,
+      city: nextCity,
+      selectedServices: nextServices,
+      maxPrice: nextMaxPrice,
+      minRating: nextMinRating,
+      style: nextStyle,
+    })
+  }, [searchParams])
+
+  function applyRoute(nextPage = 1) {
+    const params = new URLSearchParams()
+    if (query) params.set('q', query)
+    if (city) params.set('city', city)
+    if (selectedServices.length) params.set('services', selectedServices.join(','))
+    if (maxPrice < 500) params.set('maxPrice', maxPrice)
+    if (minRating > 0) params.set('minRating', minRating)
+    if (style !== 'Any') params.set('style', style)
+    params.set('page', String(nextPage))
+
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }
 
   function handleSearch(e) {
     e.preventDefault()
     setPage(1)
-    fetchResults(1)
+    applyRoute(1)
   }
 
   function toggleService(service) {
@@ -267,7 +318,10 @@ function SearchContent() {
                 {Array.from({ length: totalPages }).map((_, i) => (
                   <button
                     key={i}
-                    onClick={() => { setPage(i + 1); fetchResults(i + 1) }}
+                    onClick={() => {
+                      setPage(i + 1)
+                      applyRoute(i + 1)
+                    }}
                     className={`w-9 h-9 rounded-lg text-sm font-semibold ${
                       page === i + 1
                         ? 'bg-[#1f1f1f] text-white'

@@ -18,6 +18,12 @@ export default function ProfessionalPage() {
   const [favorited, setFavorited] = useState(false)
   const [favLoading, setFavLoading] = useState(false)
   const [showReviewForm, setShowReviewForm] = useState(false)
+  const [messageBoard, setMessageBoard] = useState([])
+  const [senderName, setSenderName] = useState('')
+  const [senderEmail, setSenderEmail] = useState('')
+  const [draftMessage, setDraftMessage] = useState('')
+  const [sendingMessage, setSendingMessage] = useState(false)
+  const [messageError, setMessageError] = useState('')
 
   useEffect(() => {
     fetch(`/api/professionals/${id}`)
@@ -34,6 +40,12 @@ export default function ProfessionalPage() {
         setLoading(false)
       })
   }, [id, session?.user])
+
+  useEffect(() => {
+    if (!session?.user) return
+    setSenderName((prev) => prev || session.user.name || '')
+    setSenderEmail((prev) => prev || session.user.email || '')
+  }, [session])
 
   async function toggleFavorite() {
     if (!session) {
@@ -56,6 +68,54 @@ export default function ProfessionalPage() {
     const data = await res.json()
     setFavorited(data.favorited)
     setFavLoading(false)
+  }
+
+  async function handleSendMessage(e) {
+    e.preventDefault()
+    setMessageError('')
+
+    if (!senderName.trim() || !senderEmail.trim() || !draftMessage.trim()) {
+      setMessageError('Please complete your name, email, and message.')
+      return
+    }
+
+    setSendingMessage(true)
+
+    try {
+      const res = await fetch(`/api/professionals/${id}/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: senderName.trim(),
+          email: senderEmail.trim(),
+          message: draftMessage.trim(),
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setMessageError(data?.error || 'Could not send message.')
+        setSendingMessage(false)
+        return
+      }
+
+      setMessageBoard((current) => [
+        ...current,
+        {
+          id: Date.now(),
+          author: senderName.trim(),
+          email: senderEmail.trim(),
+          text: draftMessage.trim(),
+          createdAt: new Date().toISOString(),
+        },
+      ])
+      setDraftMessage('')
+    } catch {
+      setMessageError('Could not send message.')
+    } finally {
+      setSendingMessage(false)
+    }
   }
 
   if (loading) return (
@@ -157,6 +217,61 @@ export default function ProfessionalPage() {
             <button className="w-full mt-4 bg-[#1f1f1f] text-white rounded-xl py-3 text-sm font-semibold shadow hover:bg-[#111827] transition-colors">
               Request Booking
             </button>
+          </div>
+        </section>
+
+        <section className="bg-white border border-[#e8e8e8] rounded-2xl p-4">
+          <h2 className="font-semibold mb-1">Message the Tech</h2>
+          <p className="text-sm text-[#666] mb-3">Send a request directly to {pro.name}. Your message will be emailed to their contact address.</p>
+
+          <form onSubmit={handleSendMessage} className="space-y-2.5">
+            <div className="grid sm:grid-cols-2 gap-2.5">
+              <input
+                value={senderName}
+                onChange={(e) => setSenderName(e.target.value)}
+                placeholder="Your name"
+                className="w-full rounded-xl border border-[#e7e5e4] bg-[#fafaf9] px-3 py-2 text-sm outline-none focus:border-[#1f1f1f]"
+              />
+              <input
+                type="email"
+                value={senderEmail}
+                onChange={(e) => setSenderEmail(e.target.value)}
+                placeholder="Your email"
+                className="w-full rounded-xl border border-[#e7e5e4] bg-[#fafaf9] px-3 py-2 text-sm outline-none focus:border-[#1f1f1f]"
+              />
+            </div>
+            <textarea
+              value={draftMessage}
+              onChange={(e) => setDraftMessage(e.target.value)}
+              placeholder="Hi! I'd like to book for ..."
+              className="min-h-[110px] w-full rounded-xl border border-[#e7e5e4] bg-[#fafaf9] px-3 py-2 text-sm outline-none focus:border-[#1f1f1f]"
+            />
+
+            <button
+              type="submit"
+              disabled={sendingMessage}
+              className="rounded-xl bg-[#1f1f1f] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              {sendingMessage ? 'Sending...' : 'Send Message'}
+            </button>
+
+            {messageError ? <p className="text-xs text-[#b42318]">{messageError}</p> : null}
+          </form>
+
+          <div className="mt-4 border-t border-[#f0f0f0] pt-3">
+            <h3 className="text-sm font-semibold mb-2">Message Board</h3>
+            {messageBoard.length === 0 ? (
+              <p className="text-sm text-[#777]">No messages yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {messageBoard.map((item) => (
+                  <div key={item.id} className="rounded-xl border border-[#ececec] bg-[#fafaf9] p-3">
+                    <p className="text-xs text-[#777]">{item.author} • {item.email}</p>
+                    <p className="text-sm text-[#444] mt-1 whitespace-pre-wrap">{item.text}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
 

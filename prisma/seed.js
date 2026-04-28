@@ -37,6 +37,7 @@ async function main() {
     {
       name: 'GlossLab Nails',
       bio: 'Award-winning nail studio specializing in gel, acrylic, and nail art. Walk-ins welcome!',
+      email: 'glosslabnails@beautybook.tech',
       city: 'West Lafayette',
       state: 'IN',
       lat: 40.4259,
@@ -52,6 +53,7 @@ async function main() {
     {
       name: 'Velvet Touch Studio',
       bio: 'Full-service beauty studio offering hair, lashes, and brow services.',
+      email: 'velvettouch@beautybook.tech',
       city: 'Lafayette',
       state: 'IN',
       lat: 40.4167,
@@ -67,6 +69,7 @@ async function main() {
     {
       name: 'Blush Nail Bar',
       bio: 'Cozy nail bar with specialty nail art and luxury manicures.',
+      email: 'blushnailbar@beautybook.tech',
       city: 'West Lafayette',
       state: 'IN',
       lat: 40.4312,
@@ -82,6 +85,7 @@ async function main() {
     {
       name: 'Psnailed It',
       bio: 'Trendy nail salon known for creative designs and fast service.',
+      email: 'psnailedit@beautybook.tech',
       city: 'Lafayette',
       state: 'IN',
       lat: 40.4190,
@@ -97,6 +101,7 @@ async function main() {
     {
       name: 'The Lash Lounge',
       bio: 'Certified lash artists offering classic, hybrid, and volume extensions.',
+      email: 'lashlounge@beautybook.tech',
       city: 'West Lafayette',
       state: 'IN',
       lat: 40.4280,
@@ -139,6 +144,7 @@ async function main() {
       pros.push({
         name: `${service} Collective ${i}`,
         bio: `Specialized ${service.toLowerCase()} studio focused on clean technique, consistency, and client-first service.`,
+        email: `${slugify(`${service} Collective ${i}`)}@beautybook.tech`,
         city,
         state,
         lat: 40.42 + offset,
