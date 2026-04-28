@@ -1,26 +1,52 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Eye, EyeOff } from 'lucide-react'
+import { signIn, useSession } from 'next-auth/react'
 
 export default function LoginPage() {
   const router = useRouter()
+  const { status } = useSession()
+  const [accountType, setAccountType] = useState('user')
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  function handleSubmit(e) {
+  const [callbackUrl, setCallbackUrl] = useState('/')
+  const [postLoginRedirect, setPostLoginRedirect] = useState('')
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const fromQuery = new URLSearchParams(window.location.search).get('callbackUrl')
+    if (fromQuery) setCallbackUrl(fromQuery)
+  }, [])
+
+  useEffect(() => {
+    const target = postLoginRedirect || callbackUrl
+    if (status === 'authenticated') {
+      router.replace(target)
+    }
+  }, [status, router, callbackUrl, postLoginRedirect])
+
+  async function handleSubmit(e) {
     e.preventDefault()
     setError('')
     setIsSubmitting(true)
+    const destination = accountType === 'tech' ? '/tech' : callbackUrl
+    setPostLoginRedirect(destination)
 
-    const normalizedEmail = email.trim().toLowerCase()
+    const result = await signIn('credentials', {
+      redirect: false,
+      email: email.trim().toLowerCase(),
+      password,
+      callbackUrl: destination,
+    })
 
-    if (normalizedEmail === 'demo@beautybook.com' && password === 'password123') {
-      router.push('/tech')
+    if (result?.ok) {
+      router.push(destination)
       return
     }
 
@@ -46,6 +72,27 @@ export default function LoginPage() {
       </div>
 
       <div className="w-full max-w-sm bg-white rounded-3xl border border-[#F4C0D1] p-6">
+        <div className="mb-4 rounded-xl border border-[#F4C0D1] bg-[#fdf6f9] p-1 grid grid-cols-2 gap-1">
+          <button
+            type="button"
+            onClick={() => setAccountType('user')}
+            className={`rounded-lg py-2 text-xs font-medium transition-colors ${
+              accountType === 'user' ? 'bg-white text-[#2C1A23] border border-[#F4C0D1]' : 'text-[#7a5a67]'
+            }`}
+          >
+            Everyday User
+          </button>
+          <button
+            type="button"
+            onClick={() => setAccountType('tech')}
+            className={`rounded-lg py-2 text-xs font-medium transition-colors ${
+              accountType === 'tech' ? 'bg-white text-[#2C1A23] border border-[#F4C0D1]' : 'text-[#7a5a67]'
+            }`}
+          >
+            Tech
+          </button>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="text-xs font-medium text-[#7a5a67] uppercase tracking-wider">Email</label>
@@ -81,7 +128,7 @@ export default function LoginPage() {
           </div>
 
           <div className={`text-xs px-3 py-2 rounded-lg border ${error ? 'text-[#b42318] bg-[#fff1f3] border-[#f3b7c3]' : 'text-[#7a5a67] bg-[#fdf6f9] border-[#F4C0D1]'}`}>
-            {error || 'Use your account credentials to open the tech dashboard.'}
+            {error || (accountType === 'tech' ? 'Sign in as a tech to access the tech dashboard.' : 'Sign in as an everyday user to browse professionals.')}
           </div>
 
           <button
@@ -101,7 +148,7 @@ export default function LoginPage() {
         </div>
 
         <div className="mt-4 pt-4 border-t border-[#F4C0D1]">
-          <p className="text-xs text-center text-[#bba0ab]">Demo: demo@beautybook.com / password123</p>
+          <p className="text-xs text-center text-[#bba0ab]">Use your registered account to sign in.</p>
         </div>
       </div>
     </div>
