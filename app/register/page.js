@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Eye, EyeOff } from 'lucide-react'
+import { signIn } from 'next-auth/react'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -61,10 +62,24 @@ export default function RegisterPage() {
         return
       }
 
-      setSuccess('Account created. Redirecting to sign in...')
-      setTimeout(() => {
-        router.push('/login')
-      }, 700)
+      setSuccess('Account created. Signing you in...')
+
+      const destination = accountType === 'tech' ? '/tech' : '/'
+      const signInResult = await signIn('credentials', {
+        redirect: false,
+        email: normalizedEmail,
+        password,
+        accountType,
+        callbackUrl: destination,
+      })
+
+      if (!signInResult?.ok) {
+        setError('Account created, but automatic sign-in failed. Please sign in manually.')
+        setIsSubmitting(false)
+        return
+      }
+
+      router.push(destination)
     } catch {
       setError('Server error. Please try again.')
       setIsSubmitting(false)
