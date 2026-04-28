@@ -13,6 +13,73 @@ function toLocalDateTimeValue(date = new Date()) {
   return localDate.toISOString().slice(0, 16)
 }
 
+function toLocalDateValue(date = new Date()) {
+  const localDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000))
+  return localDate.toISOString().slice(0, 10)
+}
+
+function toLocalTimeValue(date = new Date()) {
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+function parseTimeLabel(value) {
+  if (!value || value === 'Closed') return null
+
+  const match = value.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i)
+  if (!match) return null
+
+  let hours = Number(match[1]) % 12
+  const minutes = Number(match[2])
+  const meridiem = match[3].toUpperCase()
+
+  if (meridiem === 'PM') hours += 12
+
+  return { hours, minutes }
+}
+
+function formatTimeValue(value) {
+  const parsed = parseTimeLabel(value)
+  if (!parsed) return ''
+  return `${String(parsed.hours).padStart(2, '0')}:${String(parsed.minutes).padStart(2, '0')}`
+}
+
+function getDayName(dateValue) {
+  const [year, month, day] = dateValue.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  return DAY_ORDER[date.getDay() === 0 ? 6 : date.getDay() - 1]
+}
+
+function getHoursForDate(hours, dateValue) {
+  if (!dateValue) return null
+  const dayName = getDayName(dateValue)
+  return hours.find((entry) => entry.day === dayName) || null
+}
+
+function combineLocalDateAndTime(dateValue, timeValue) {
+  if (!dateValue || !timeValue) return null
+  const [year, month, day] = dateValue.split('-').map(Number)
+  const [hours, minutes] = timeValue.split(':').map(Number)
+  return new Date(year, month - 1, day, hours, minutes)
+}
+
+function isWithinHours(dateValue, timeValue, hoursEntry) {
+  if (!hoursEntry || hoursEntry.open === 'Closed') return false
+
+  const selectedDate = combineLocalDateAndTime(dateValue, timeValue)
+  const openTime = combineLocalDateAndTime(dateValue, formatTimeValue(hoursEntry.open))
+  const closeTime = combineLocalDateAndTime(dateValue, formatTimeValue(hoursEntry.close))
+
+  if (!selectedDate || !openTime || !closeTime) return false
+
+  return selectedDate.getTime() >= openTime.getTime() && selectedDate.getTime() <= closeTime.getTime()
+}
+
+function maxTimeValue(first, second) {
+  if (!first) return second
+  if (!second) return first
+  return first > second ? first : second
+}
+
 export default function ProfessionalPage() {
   const { id } = useParams()
   const router = useRouter()
@@ -30,7 +97,8 @@ export default function ProfessionalPage() {
   const [sendingMessage, setSendingMessage] = useState(false)
   const [messageError, setMessageError] = useState('')
   const [bookingLoading, setBookingLoading] = useState(false)
-  const [bookingDate, setBookingDate] = useState('')
+  const [bookingDay, setBookingDay] = useState('')
+  const [bookingTime, setBookingTime] = useState('')
   const [bookingNotes, setBookingNotes] = useState('')
   const [bookingError, setBookingError] = useState('')
   const [bookingSuccess, setBookingSuccess] = useState('')
@@ -138,12 +206,23 @@ export default function ProfessionalPage() {
       return
     }
 
-    if (!bookingDate) {
+    if (!bookingDay || !bookingTime) {
       setBookingError('Please choose an appointment date and time.')
       return
     }
 
-    const date = new Date(bookingDate)
+    const hoursForDate = getHoursForDate(pro.hours || [], bookingDay)
+    if (!hoursForDate || hoursForDate.open === 'Closed') {
+      setBookingError('This technician is closed on the selected day.')
+      return
+    }
+
+    if (!isWithinHours(bookingDay, bookingTime, hoursForDate)) {
+      setBookingError(`Please choose a time between ${hoursForDate.open} and ${hoursForDate.close}.`)
+      return
+    }
+
+    const date = combineLocalDateAndTime(bookingDay, bookingTime)
     if (Number.isNaN(date.getTime())) {
       setBookingError('Please choose a valid appointment date and time.')
       return
@@ -171,7 +250,8 @@ export default function ProfessionalPage() {
         return
       }
       setBookingSuccess('Booking request sent! Check Profile → Calendar.')
-      setBookingDate('')
+      setBookingDay('')
+      setBookingTime('')
       setBookingNotes('')
     } catch {
       setBookingError('Could not create booking.')
@@ -196,6 +276,14 @@ export default function ProfessionalPage() {
   const sortedHours = (pro.hours || []).sort(
     (a, b) => DAY_ORDER.indexOf(a.day) - DAY_ORDER.indexOf(b.day)
   )
+  const hoursForSelectedDate = getHoursForDate(sortedHours, bookingDay)
+  const selectedDayIsClosed = bookingDay && (!hoursForSelectedDate || hoursForSelectedDate.open === 'Closed')
+  const isToday = bookingDay === toLocalDateValue()
+  const earliestTime = hoursForSelectedDate
+    ? maxTimeValue(formatTimeValue(hoursForSelectedDate.open), isToday ? toLocalTimeValue() : '')
+    : ''
+  const latestTime = hoursForSelectedDate ? formatTimeValue(hoursForSelectedDate.close) : ''
+  const noTimesRemaining = Boolean(earliestTime && latestTime && earliestTime > latestTime)
 
   return (
     <div className="min-h-screen bg-[#f7f7f7]">
@@ -209,15 +297,15 @@ export default function ProfessionalPage() {
           <ArrowLeft size={14} /> Back
         </button>
 
-        <section className="soft-panel rounded-3xl overflow-hidden">
-          <div className="h-44 bg-gradient-to-br from-stone-100 via-neutral-50 to-stone-200 relative">
+        <section className="soft-panel rounded-3xl overflow-visible">
+          <div className="h-44 overflow-hidden rounded-t-3xl bg-gradient-to-br from-stone-100 via-neutral-50 to-stone-200 relative">
             {pro.image && (
               <img src={pro.image} alt={pro.name} className="w-full h-full object-cover" />
             )}
             <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent" />
           </div>
 
-          <div className="px-5 pb-5">
+          <div className="relative px-5 pb-5">
             <div className="flex items-end justify-between -mt-10 mb-3">
               <div className="story-ring">
                 <div className="w-20 h-20 rounded-full bg-[#1f1f1f] text-white flex items-center justify-center text-3xl font-display border border-white shadow-md">
@@ -279,17 +367,43 @@ export default function ProfessionalPage() {
             <form onSubmit={handleRequestBooking} className="mt-4 space-y-3 rounded-2xl border border-[#e7e5e4] bg-[#fafaf9] p-4">
               <div>
                 <label htmlFor="booking-date" className="mb-1.5 block text-sm font-semibold text-[#1f1f1f]">
-                  Appointment date and time
+                  Appointment date
                 </label>
                 <input
                   id="booking-date"
-                  type="datetime-local"
-                  value={bookingDate}
-                  min={toLocalDateTimeValue()}
-                  onChange={(e) => setBookingDate(e.target.value)}
+                  type="date"
+                  value={bookingDay}
+                  min={toLocalDateValue()}
+                  onChange={(e) => {
+                    setBookingDay(e.target.value)
+                    setBookingTime('')
+                  }}
                   className="w-full rounded-xl border border-[#e7e5e4] bg-white px-3 py-2 text-sm outline-none focus:border-[#1f1f1f]"
                 />
-                <p className="mt-1 text-xs text-[#777]">Select a future time to request your appointment.</p>
+                <p className="mt-1 text-xs text-[#777]">Pick a future day from the calendar.</p>
+              </div>
+
+              <div>
+                <label htmlFor="booking-time" className="mb-1.5 block text-sm font-semibold text-[#1f1f1f]">
+                  Appointment time
+                </label>
+                <input
+                  id="booking-time"
+                  type="time"
+                  value={bookingTime}
+                  min={!noTimesRemaining ? earliestTime || undefined : undefined}
+                  max={latestTime || undefined}
+                  step={900}
+                  disabled={!bookingDay || selectedDayIsClosed || noTimesRemaining}
+                  onChange={(e) => setBookingTime(e.target.value)}
+                  className="w-full rounded-xl border border-[#e7e5e4] bg-white px-3 py-2 text-sm outline-none focus:border-[#1f1f1f] disabled:bg-[#f4f1f2] disabled:text-[#9b8f95]"
+                />
+                <p className="mt-1 text-xs text-[#777]">
+                  {!bookingDay && 'Choose a date first to see available hours.'}
+                  {bookingDay && selectedDayIsClosed && 'This technician is closed on that day.'}
+                  {bookingDay && !selectedDayIsClosed && noTimesRemaining && 'No appointment times remain for that day.'}
+                  {bookingDay && !selectedDayIsClosed && !noTimesRemaining && `Available from ${hoursForSelectedDate.open} to ${hoursForSelectedDate.close}.`}
+                </p>
               </div>
 
               <div>
