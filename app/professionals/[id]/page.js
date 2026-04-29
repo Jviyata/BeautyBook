@@ -2,16 +2,11 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { Star, MapPin, Phone, Instagram, Globe, Heart, ArrowLeft, Clock } from 'lucide-react'
+import { Star, MapPin, Phone, Instagram, Globe, Heart, ArrowLeft, Clock, ChevronDown, ChevronUp, MessageCircle } from 'lucide-react'
 import Navbar from '@/components/Navbar'
 import ReviewForm from '@/components/ReviewForm'
 
 const DAY_ORDER = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
-
-function toLocalDateTimeValue(date = new Date()) {
-  const localDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000))
-  return localDate.toISOString().slice(0, 16)
-}
 
 function toLocalDateValue(date = new Date()) {
   const localDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000))
@@ -80,6 +75,10 @@ function maxTimeValue(first, second) {
   return first > second ? first : second
 }
 
+function toExampleInstagramHandle(name = '') {
+  return name.toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
 export default function ProfessionalPage() {
   const { id } = useParams()
   const router = useRouter()
@@ -90,10 +89,10 @@ export default function ProfessionalPage() {
   const [favorited, setFavorited] = useState(false)
   const [favLoading, setFavLoading] = useState(false)
   const [showReviewForm, setShowReviewForm] = useState(false)
-  const [messageBoard, setMessageBoard] = useState([])
-  const [senderName, setSenderName] = useState('')
-  const [senderEmail, setSenderEmail] = useState('')
-  const [draftMessage, setDraftMessage] = useState('')
+  const [conversation, setConversation] = useState(null)
+  const [conversationLoading, setConversationLoading] = useState(false)
+  const [chatOpen, setChatOpen] = useState(false)
+  const [messageDraft, setMessageDraft] = useState('')
   const [sendingMessage, setSendingMessage] = useState(false)
   const [messageError, setMessageError] = useState('')
   const [bookingLoading, setBookingLoading] = useState(false)
@@ -101,7 +100,7 @@ export default function ProfessionalPage() {
   const [bookingTime, setBookingTime] = useState('')
   const [bookingNotes, setBookingNotes] = useState('')
   const [bookingError, setBookingError] = useState('')
-  const [bookingSuccess, setBookingSuccess] = useState('')
+  const [showBookingSuccessModal, setShowBookingSuccessModal] = useState(false)
 
   useEffect(() => {
     fetch(`/api/professionals/${id}`)
@@ -120,10 +119,32 @@ export default function ProfessionalPage() {
   }, [id, session?.user])
 
   useEffect(() => {
-    if (!session?.user) return
-    setSenderName((prev) => prev || session.user.name || '')
-    setSenderEmail((prev) => prev || session.user.email || '')
-  }, [session])
+    if (!session?.user || session.user.role !== 'USER') {
+      setConversation(null)
+      return
+    }
+
+    let cancelled = false
+    setConversationLoading(true)
+
+    fetch(`/api/messages?professionalId=${id}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return
+        setConversation(data?.conversation || null)
+      })
+      .catch(() => {
+        if (cancelled) return
+        setMessageError('Could not load this conversation.')
+      })
+      .finally(() => {
+        if (!cancelled) setConversationLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [id, session?.user])
 
   async function toggleFavorite() {
     if (!session) {
@@ -152,22 +173,32 @@ export default function ProfessionalPage() {
     e.preventDefault()
     setMessageError('')
 
-    if (!senderName.trim() || !senderEmail.trim() || !draftMessage.trim()) {
-      setMessageError('Please complete your name, email, and message.')
+    if (!session?.user) {
+      router.push('/login')
+      return
+    }
+
+    if (session.user.role !== 'USER') {
+      setMessageError('Technicians can manage conversations from the dashboard inbox.')
+      return
+    }
+
+    if (!messageDraft.trim()) {
+      setMessageError('Please enter a message.')
       return
     }
 
     setSendingMessage(true)
 
     try {
-      const res = await fetch(`/api/professionals/${id}/message`, {
+      const res = await fetch(conversation ? `/api/messages/${conversation.id}` : '/api/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: senderName.trim(),
-          email: senderEmail.trim(),
-          message: draftMessage.trim(),
-        }),
+        body: JSON.stringify(
+          conversation
+            ? { body: messageDraft.trim() }
+            : { professionalId: id, body: messageDraft.trim() },
+        ),
       })
 
       const data = await res.json()
@@ -178,17 +209,9 @@ export default function ProfessionalPage() {
         return
       }
 
-      setMessageBoard((current) => [
-        ...current,
-        {
-          id: Date.now(),
-          author: senderName.trim(),
-          email: senderEmail.trim(),
-          text: draftMessage.trim(),
-          createdAt: new Date().toISOString(),
-        },
-      ])
-      setDraftMessage('')
+      setConversation(data.conversation)
+      setChatOpen(true)
+      setMessageDraft('')
     } catch {
       setMessageError('Could not send message.')
     } finally {
@@ -199,7 +222,6 @@ export default function ProfessionalPage() {
   async function handleRequestBooking(e) {
     e.preventDefault()
     setBookingError('')
-    setBookingSuccess('')
 
     if (!session?.user) {
       router.push('/login')
@@ -249,7 +271,7 @@ export default function ProfessionalPage() {
         setBookingError(data?.error || 'Could not create booking.')
         return
       }
-      setBookingSuccess('Booking request sent! Check Profile → Calendar.')
+      setShowBookingSuccessModal(true)
       setBookingDay('')
       setBookingTime('')
       setBookingNotes('')
@@ -284,12 +306,17 @@ export default function ProfessionalPage() {
     : ''
   const latestTime = hoursForSelectedDate ? formatTimeValue(hoursForSelectedDate.close) : ''
   const noTimesRemaining = Boolean(earliestTime && latestTime && earliestTime > latestTime)
+  const activeDayName = bookingDay ? getDayName(bookingDay) : DAY_ORDER[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1]
+  const activeHours = bookingDay ? hoursForSelectedDate : getHoursForDate(sortedHours, toLocalDateValue())
+  const instagramHandle = pro.instagram || toExampleInstagramHandle(pro.name)
+  const instagramHref = `https://instagram.com/${instagramHandle}`
+  const displayRating = typeof pro.avgRating === 'number' ? pro.avgRating.toFixed(1) : null
 
   return (
     <div className="min-h-screen bg-[#f7f7f7]">
       <Navbar active="search" />
 
-      <main className="page-shell space-y-4">
+      <main className="page-shell space-y-4 pb-32 md:pb-28">
         <button
           onClick={() => router.back()}
           className="inline-flex items-center gap-1 text-sm text-[#555] hover:text-[#1f1f1f]"
@@ -333,27 +360,62 @@ export default function ProfessionalPage() {
               <MapPin size={12} /> {pro.city}, {pro.state}
             </p>
 
-            <div className="flex gap-5 mt-4 pt-4 border-t border-[#f0f0f0]">
-              {pro.avgRating && (
-                <div className="text-center">
-                  <p className="font-bold text-base">{pro.avgRating}</p>
-                <p className="text-[11px] text-[var(--pink-ink)]">Rating</p>
-                </div>
+            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+              {pro.phone && (
+                <a
+                  href={`tel:${pro.phone}`}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[#f3d7e3] bg-[#fff8fb] px-3 py-1.5 text-[var(--pink-ink)]"
+                >
+                  <Phone size={12} /> {pro.phone}
+                </a>
               )}
-              <div className="text-center">
-                <p className="font-bold text-base">{pro.reviewCount || 0}</p>
-                <p className="text-[11px] text-[var(--pink-ink)]">Reviews</p>
-              </div>
-              <div className="text-center">
-                <p className="font-bold text-base">${pro.priceMin}–{pro.priceMax}</p>
-                <p className="text-[11px] text-[var(--pink-ink)]">Price</p>
-              </div>
-              {pro.gallery?.length > 0 && (
-                <div className="text-center">
-                  <p className="font-bold text-base">{pro.gallery.length}</p>
-                  <p className="text-[11px] text-[var(--pink-ink)]">Posts</p>
-                </div>
+              <a
+                href={instagramHref}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-full border border-[#f3d7e3] bg-[#fff8fb] px-3 py-1.5 text-[var(--pink-ink)]"
+              >
+                <Instagram size={12} /> @{instagramHandle}
+              </a>
+              {pro.website && (
+                <a
+                  href={pro.website}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[#f3d7e3] bg-[#fff8fb] px-3 py-1.5 text-[var(--pink-ink)]"
+                >
+                  <Globe size={12} /> Website
+                </a>
               )}
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border-t border-[#f0f0f0] pt-4">
+              <div className="flex items-center gap-3">
+                <div className="flex gap-0.5">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star
+                      key={i}
+                      size={14}
+                      className={i < Math.round(pro.avgRating || 0) ? 'fill-[var(--pink)] text-[var(--pink)]' : 'text-[#ddd]'}
+                    />
+                  ))}
+                </div>
+                <div>
+                  <p className="text-base font-semibold text-[#1f1f1f]">{displayRating || 'New'}</p>
+                  <p className="text-[11px] text-[var(--pink-ink)]">{pro.reviewCount || 0} written reviews</p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-full border border-[#f3d7e3] bg-[#fff4f8] px-3 py-1 text-xs font-medium text-[var(--pink-ink)]">
+                  ${pro.priceMin}–${pro.priceMax}
+                </span>
+                {pro.gallery?.length > 0 && (
+                  <span className="rounded-full border border-[#f3d7e3] bg-[#fff4f8] px-3 py-1 text-xs font-medium text-[var(--pink-ink)]">
+                    {pro.gallery.length} posts
+                  </span>
+                )}
+              </div>
             </div>
 
             {pro.bio && <p className="text-sm text-[#666] mt-3 leading-relaxed">{pro.bio}</p>}
@@ -365,6 +427,44 @@ export default function ProfessionalPage() {
             </div>
 
             <form onSubmit={handleRequestBooking} className="mt-4 space-y-3 rounded-2xl border border-[#e7e5e4] bg-[#fafaf9] p-4">
+              {sortedHours.length > 0 && (
+                <div className="rounded-2xl border border-[#f3d7e3] bg-white p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className="font-semibold inline-flex items-center gap-2 text-sm text-[#1f1f1f]">
+                      <Clock size={14} className="text-[var(--pink)]" /> Book Within Working Hours
+                    </h2>
+                    <span className="text-[11px] font-medium text-[var(--pink-ink)] bg-[#fff4f8] border border-[#f3d7e3] rounded-full px-2.5 py-1">
+                      {activeDayName}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs text-[#7a5a67]">
+                    {activeHours?.open === 'Closed'
+                      ? `${activeDayName} is closed.`
+                      : activeHours
+                        ? `${activeDayName} hours: ${activeHours.open} - ${activeHours.close}.`
+                        : 'Choose a date to see that day’s booking window.'}
+                  </p>
+                  <div className="mt-3 grid gap-1.5 sm:grid-cols-2">
+                    {sortedHours.map((h) => {
+                      const isActive = h.day === activeDayName
+                      return (
+                        <div
+                          key={h.day}
+                          className={`flex items-center justify-between rounded-xl border px-3 py-2 text-xs ${
+                            isActive
+                              ? 'border-[#f3d7e3] bg-[#fff4f8] text-[var(--pink-ink)]'
+                              : 'border-[#f0f0f0] bg-[#fcfcfc] text-[#666]'
+                          }`}
+                        >
+                          <span className="font-medium">{h.day}</span>
+                          <span>{h.open === 'Closed' ? 'Closed' : `${h.open} - ${h.close}`}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label htmlFor="booking-date" className="mb-1.5 block text-sm font-semibold text-[#1f1f1f]">
                   Appointment date
@@ -428,68 +528,12 @@ export default function ProfessionalPage() {
               </button>
 
               {bookingError ? <p className="text-xs text-[#b42318]">{bookingError}</p> : null}
-              {bookingSuccess ? <p className="text-xs text-[#166534]">{bookingSuccess}</p> : null}
             </form>
           </div>
         </section>
 
-        <section className="bg-white border border-[#e8e8e8] rounded-2xl p-4">
-          <h2 className="font-semibold mb-1">Message the Tech</h2>
-          <p className="text-sm text-[#666] mb-3">Send a request directly to {pro.name}. Your message will be emailed to their contact address.</p>
-
-          <form onSubmit={handleSendMessage} className="space-y-2.5">
-            <div className="grid sm:grid-cols-2 gap-2.5">
-              <input
-                value={senderName}
-                onChange={(e) => setSenderName(e.target.value)}
-                placeholder="Your name"
-                className="w-full rounded-xl border border-[#e7e5e4] bg-[#fafaf9] px-3 py-2 text-sm outline-none focus:border-[#1f1f1f]"
-              />
-              <input
-                type="email"
-                value={senderEmail}
-                onChange={(e) => setSenderEmail(e.target.value)}
-                placeholder="Your email"
-                className="w-full rounded-xl border border-[#e7e5e4] bg-[#fafaf9] px-3 py-2 text-sm outline-none focus:border-[#1f1f1f]"
-              />
-            </div>
-            <textarea
-              value={draftMessage}
-              onChange={(e) => setDraftMessage(e.target.value)}
-              placeholder="Hi! I'd like to book for ..."
-              className="min-h-[110px] w-full rounded-xl border border-[#e7e5e4] bg-[#fafaf9] px-3 py-2 text-sm outline-none focus:border-[#1f1f1f]"
-            />
-
-            <button
-              type="submit"
-              disabled={sendingMessage}
-              className="rounded-xl bg-[#1f1f1f] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-            >
-              {sendingMessage ? 'Sending...' : 'Send Message'}
-            </button>
-
-            {messageError ? <p className="text-xs text-[#b42318]">{messageError}</p> : null}
-          </form>
-
-          <div className="mt-4 border-t border-[#f0f0f0] pt-3">
-            <h3 className="text-sm font-semibold mb-2">Message Board</h3>
-            {messageBoard.length === 0 ? (
-              <p className="text-sm text-[#777]">No messages yet.</p>
-            ) : (
-              <div className="space-y-2">
-                {messageBoard.map((item) => (
-                  <div key={item.id} className="rounded-xl border border-[#ececec] bg-[#fafaf9] p-3">
-                    <p className="text-xs text-[#777]">{item.author} • {item.email}</p>
-                    <p className="text-sm text-[#444] mt-1 whitespace-pre-wrap">{item.text}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
-
-        <section className="grid lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2 space-y-4">
+        <section className="space-y-4">
+          <div className="space-y-4">
             {pro.gallery?.length > 0 && (
               <div className="soft-panel rounded-2xl overflow-hidden">
                 <div className="px-4 pt-4 pb-2 flex items-center gap-2">
@@ -557,35 +601,129 @@ export default function ProfessionalPage() {
               )}
             </div>
           </div>
-
-          <div className="space-y-4">
-            {(pro.phone || pro.instagram || pro.website) && (
-              <div className="bg-white border border-[#e8e8e8] rounded-2xl p-4">
-                <h2 className="font-semibold mb-2">Contact</h2>
-                <div className="space-y-2 text-sm text-[#666]">
-                  {pro.phone && <a href={`tel:${pro.phone}`} className="inline-flex items-center gap-2"><Phone size={14} /> {pro.phone}</a>}
-                  {pro.instagram && <a href={`https://instagram.com/${pro.instagram}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2"><Instagram size={14} /> @{pro.instagram}</a>}
-                  {pro.website && <a href={pro.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2"><Globe size={14} /> Website</a>}
-                </div>
-              </div>
-            )}
-
-            {sortedHours.length > 0 && (
-              <div className="bg-white border border-[#e8e8e8] rounded-2xl p-4">
-                <h2 className="font-semibold mb-2 inline-flex items-center gap-2"><Clock size={14} /> Working Hours</h2>
-                <div className="space-y-1.5 text-sm">
-                  {sortedHours.map(h => (
-                    <div key={h.day} className="flex justify-between text-[#666]">
-                      <span>{h.day}</span>
-                      <span>{h.open === 'Closed' ? 'Closed' : `${h.open} – ${h.close}`}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
         </section>
       </main>
+
+      <div className="fixed bottom-2 right-3 left-3 z-40 md:left-auto md:right-5 md:w-[380px]">
+        <div className="overflow-hidden rounded-3xl border border-[#f0d9e3] bg-white shadow-[0_18px_40px_rgba(127,41,77,0.18)]">
+          <button
+            type="button"
+            onClick={() => setChatOpen((current) => !current)}
+            className="flex w-full items-center justify-between gap-3 bg-[var(--pink)] px-4 py-3 text-left text-white"
+          >
+            <div className="flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20">
+                <MessageCircle size={18} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Message {pro.name}</p>
+              </div>
+            </div>
+            {chatOpen ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
+          </button>
+
+          {chatOpen && (
+            <div className="border-t border-[#f3d7e3] bg-[#fffbfd] p-4">
+              {!session?.user ? (
+                <div className="rounded-2xl border border-[#f0d9e3] bg-[#fff8fb] p-4">
+                  <p className="text-sm text-[#7a5a67]">Sign in to start messaging this technician inside the app.</p>
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/login?callbackUrl=/professionals/${id}`)}
+                    className="mt-3 rounded-xl bg-[var(--pink)] px-4 py-2 text-sm font-semibold text-white"
+                  >
+                    Sign in to message
+                  </button>
+                </div>
+              ) : session.user.role === 'TECH' ? (
+                <div className="rounded-2xl border border-[#f0d9e3] bg-[#fff8fb] p-4">
+                  <p className="text-sm text-[#7a5a67]">Technicians manage conversations from the dashboard inbox.</p>
+                  <button
+                    type="button"
+                    onClick={() => router.push('/tech/messages')}
+                    className="mt-3 rounded-xl bg-[var(--pink)] px-4 py-2 text-sm font-semibold text-white"
+                  >
+                    Open inbox
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="rounded-2xl border border-[#ececec] bg-white p-3">
+                    <div className="max-h-[280px] space-y-2 overflow-y-auto pr-1">
+                      {conversationLoading ? (
+                        <p className="text-sm text-[#777]">Loading conversation...</p>
+                      ) : conversation?.messages?.length ? (
+                        conversation.messages.map((item) => (
+                          <div
+                            key={item.id}
+                            className={`max-w-[88%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap ${
+                              item.mine
+                                ? 'ml-auto bg-[var(--pink)] text-white'
+                                : 'bg-[#fff8fb] border border-[#ececec] text-[#444]'
+                            }`}
+                          >
+                            <p>{item.body}</p>
+                            <p className={`mt-1 text-[10px] ${item.mine ? 'text-white/80' : 'text-[#999]'}`}>
+                              {new Date(item.createdAt).toLocaleString()}
+                            </p>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-[#777]">No messages yet. Start the conversation here.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleSendMessage} className="mt-3 space-y-2.5">
+                    <textarea
+                      value={messageDraft}
+                      onChange={(e) => setMessageDraft(e.target.value)}
+                      placeholder={`Message ${pro.name} about availability, timing, or service details...`}
+                      className="min-h-[96px] w-full rounded-xl border border-[#e7e5e4] bg-white px-3 py-2 text-sm outline-none focus:border-[#1f1f1f]"
+                    />
+
+                    <div className="flex items-center justify-between gap-3">
+                      <button
+                        type="submit"
+                        disabled={sendingMessage}
+                        className="rounded-xl bg-[#1f1f1f] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                      >
+                        {sendingMessage ? 'Sending...' : 'Send Message'}
+                      </button>
+                      {messageError ? <p className="text-xs text-[#b42318] text-right">{messageError}</p> : null}
+                    </div>
+                  </form>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {showBookingSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2c1a23]/40 px-4">
+          <div className="w-full max-w-sm rounded-3xl border border-[#f0d9e3] bg-white p-5 shadow-[0_24px_60px_rgba(44,26,35,0.18)]">
+            <h2 className="text-lg font-semibold text-[#1f1f1f]">Appointment Request Sent</h2>
+            <p className="mt-2 text-sm text-[#666]">Your request was submitted successfully. You can review it anytime from Profile → Calendar.</p>
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowBookingSuccessModal(false)}
+                className="flex-1 rounded-xl border border-[#f0d9e3] px-4 py-2 text-sm font-semibold text-[var(--pink-ink)]"
+              >
+                Keep browsing
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push('/profile')}
+                className="flex-1 rounded-xl bg-[var(--pink)] px-4 py-2 text-sm font-semibold text-white"
+              >
+                View calendar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

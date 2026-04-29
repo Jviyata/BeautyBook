@@ -28,7 +28,14 @@ export async function GET(req, { params }) {
       isFavorited = !!fav
     }
 
-    return NextResponse.json({ ...pro, isFavorited })
+    return NextResponse.json(
+      { ...pro, isFavorited },
+      {
+        headers: {
+          'Cache-Control': 'private, s-maxage=60, stale-while-revalidate=300',
+        },
+      }
+    )
   } catch (err) {
     console.error(err)
     return NextResponse.json({ error: 'Server error' }, { status: 500 })

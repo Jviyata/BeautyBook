@@ -12,6 +12,11 @@ enum UserRole {
   TECH
 }
 
+enum MessageSenderType {
+  USER
+  TECH
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -24,7 +29,10 @@ model User {
 
   reviews   Review[]
   favorites Favorite[]
-    bookings  Booking[]
+  bookings  Booking[]
+  conversations Conversation[]
+
+  @@index([email])
 }
 
 model Professional {
@@ -50,10 +58,15 @@ model Professional {
   reviews     Review[]
   favorites   Favorite[]
   hours       Hours[]
-    bookings    Booking[]
+  bookings    Booking[]
+  conversations Conversation[]
 
   avgRating   Float?
   reviewCount Int    @default(0)
+
+  @@index([city])
+  @@index([avgRating])
+  @@index([name])
 }
 
 model Review {
@@ -69,12 +82,14 @@ model Review {
   professionalId String
 
   @@unique([userId, professionalId])
+  @@index([userId])
+  @@index([professionalId])
 }
 
 model Favorite {
   id             String       @id @default(cuid())
   createdAt      DateTime     @default(now())
-    pinned         Boolean      @default(false)
+  pinned         Boolean      @default(false)
 
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId         String
@@ -83,28 +98,70 @@ model Favorite {
   professionalId String
 
   @@unique([userId, professionalId])
+  @@index([userId])
+  @@index([professionalId])
 }
 
-  model Booking {
-    id             String       @id @default(cuid())
-    date           DateTime
-    notes          String?
-    status         String       @default("pending")
-    createdAt      DateTime     @default(now())
+model Conversation {
+  id             String       @id @default(cuid())
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  lastMessageAt  DateTime     @default(now())
 
-    user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-    userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
 
-    professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
-    professionalId String
-  }
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  professionalId String
 
-  model Hours {
-    id             String       @id @default(cuid())
-    day            String
-    open           String
-    close          String
+  messages       Message[]
 
-    professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
-    professionalId String
+  @@unique([userId, professionalId])
+  @@index([userId])
+  @@index([professionalId])
+  @@index([lastMessageAt])
+}
+
+model Message {
+  id             String            @id @default(cuid())
+  body           String
+  senderType     MessageSenderType
+  createdAt      DateTime          @default(now())
+
+  conversation   Conversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId String
+
+  @@index([conversationId])
+  @@index([createdAt])
+}
+
+model Booking {
+  id             String       @id @default(cuid())
+  date           DateTime
+  notes          String?
+  status         String       @default("pending")
+  createdAt      DateTime     @default(now())
+
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
+
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  professionalId String
+
+  @@index([userId])
+  @@index([professionalId])
+  @@index([date])
+  @@index([status])
+}
+
+model Hours {
+  id             String       @id @default(cuid())
+  day            String
+  open           String
+  close          String
+
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  professionalId String
+
+  @@index([professionalId])
 }

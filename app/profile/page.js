@@ -51,7 +51,7 @@ export default function ProfilePage() {
 import { useEffect, useMemo, useState } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import Link from 'next/link'
-import { Heart, Star, Calendar, LogOut, User } from 'lucide-react'
+import { Heart, Star, Calendar, LogOut, User, MessageCircle } from 'lucide-react'
 import Navbar from '@/components/Navbar'
 
 export default function ProfilePage() {
@@ -60,6 +60,14 @@ export default function ProfilePage() {
   const [saved, setSaved] = useState([])
   const [reviews, setReviews] = useState([])
   const [bookings, setBookings] = useState([])
+  const [conversations, setConversations] = useState([])
+  const [selectedConversationId, setSelectedConversationId] = useState('')
+  const [messageDraft, setMessageDraft] = useState('')
+  const [messageSending, setMessageSending] = useState(false)
+  const [messageError, setMessageError] = useState('')
+  const [bookingToCancel, setBookingToCancel] = useState(null)
+  const [cancelLoading, setCancelLoading] = useState(false)
+  const [cancelError, setCancelError] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -68,10 +76,14 @@ export default function ProfilePage() {
         fetch('/api/favorites').then(r => r.json()).catch(() => []),
         fetch('/api/reviews?mine=1').then(r => r.json()).catch(() => []),
         fetch('/api/bookings').then(r => r.json()).catch(() => []),
-      ]).then(([f, r, b]) => {
+        fetch('/api/messages').then(r => r.json()).catch(() => ({ conversations: [] })),
+      ]).then(([f, r, b, m]) => {
         setSaved(Array.isArray(f) ? f : [])
         setReviews(Array.isArray(r) ? r : [])
         setBookings(Array.isArray(b) ? b : [])
+        const nextConversations = Array.isArray(m?.conversations) ? m.conversations : []
+        setConversations(nextConversations)
+        setSelectedConversationId((current) => current || nextConversations[0]?.id || '')
         setLoading(false)
       })
       return
@@ -94,6 +106,10 @@ export default function ProfilePage() {
   }, [status])
 
   const sortedSaved = useMemo(() => [...saved].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)), [saved])
+  const selectedConversation = useMemo(
+    () => conversations.find((conversation) => conversation.id === selectedConversationId) || conversations[0] || null,
+    [conversations, selectedConversationId],
+  )
 
   async function togglePin(professionalId) {
     await fetch('/api/favorites', {
@@ -102,6 +118,67 @@ export default function ProfilePage() {
       body: JSON.stringify({ professionalId }),
     })
     setSaved(prev => prev.map(p => (p.id === professionalId ? { ...p, pinned: !p.pinned } : p)))
+  }
+
+  async function sendMessage() {
+    if (!selectedConversation || !messageDraft.trim()) return
+
+    setMessageError('')
+    setMessageSending(true)
+
+    try {
+      const res = await fetch(`/api/messages/${selectedConversation.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body: messageDraft.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setMessageError(data?.error || 'Could not send message.')
+        setMessageSending(false)
+        return
+      }
+
+      const updatedConversation = data.conversation
+      setConversations((current) => [
+        updatedConversation,
+        ...current.filter((conversation) => conversation.id !== updatedConversation.id),
+      ])
+      setSelectedConversationId(updatedConversation.id)
+      setMessageDraft('')
+    } catch {
+      setMessageError('Could not send message.')
+    } finally {
+      setMessageSending(false)
+    }
+  }
+
+  async function confirmCancelBooking() {
+    if (!bookingToCancel) return
+
+    setCancelError('')
+    setCancelLoading(true)
+
+    try {
+      const res = await fetch('/api/bookings', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: bookingToCancel.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setCancelError(data?.error || 'Could not cancel booking.')
+        setCancelLoading(false)
+        return
+      }
+
+      setBookings((current) => current.filter((booking) => booking.id !== bookingToCancel.id))
+      setBookingToCancel(null)
+    } catch {
+      setCancelError('Could not cancel booking.')
+    } finally {
+      setCancelLoading(false)
+    }
   }
 
   if (status === 'loading' || (status === 'authenticated' && loading)) {
@@ -135,6 +212,7 @@ export default function ProfilePage() {
         <button onClick={() => setTab('saved')} className={`flex-1 py-3 text-xs border-b-2 ${tab === 'saved' ? 'accent-tab' : 'border-transparent text-[#7a5a67]'}`}>Saved</button>
         <button onClick={() => setTab('reviews')} className={`flex-1 py-3 text-xs border-b-2 ${tab === 'reviews' ? 'accent-tab' : 'border-transparent text-[#7a5a67]'}`}>Reviews</button>
         <button onClick={() => setTab('calendar')} className={`flex-1 py-3 text-xs border-b-2 ${tab === 'calendar' ? 'accent-tab' : 'border-transparent text-[#7a5a67]'}`}>Calendar</button>
+        <button onClick={() => setTab('messages')} className={`flex-1 py-3 text-xs border-b-2 ${tab === 'messages' ? 'accent-tab' : 'border-transparent text-[#7a5a67]'}`}>Messages</button>
       </div>
 
       <div className="px-4 py-5">
@@ -172,16 +250,146 @@ export default function ProfilePage() {
         {tab === 'calendar' && (
           <div className="space-y-3">
             {bookings.map(b => (
-              <div key={b.id} className="bg-white rounded-2xl border border-[#ececec] p-3 flex items-center gap-2">
-                <Calendar size={14} />
-                <Link href={`/professionals/${b.professionalId}`} className="text-sm font-medium">{b.professional?.name}</Link>
-                <span className="text-xs text-[#7a5a67]">{new Date(b.date).toLocaleString()}</span>
+              <div key={b.id} className="bg-white rounded-2xl border border-[#ececec] p-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Calendar size={14} />
+                  <Link href={`/professionals/${b.professionalId}`} className="text-sm font-medium truncate">{b.professional?.name}</Link>
+                  <span className="text-xs text-[#7a5a67] shrink-0">{new Date(b.date).toLocaleString()}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setBookingToCancel(b)}
+                  className="shrink-0 rounded-xl border border-[#f1c7d6] px-3 py-1.5 text-xs font-semibold text-[#b42318] hover:bg-[#fff4f6]"
+                >
+                  Cancel
+                </button>
               </div>
             ))}
             {bookings.length === 0 && <div className="text-sm text-[#7a5a67]">No bookings yet.</div>}
           </div>
         )}
+
+        {tab === 'messages' && (
+          status === 'unauthenticated' ? (
+            <div className="rounded-2xl border border-[#ececec] bg-white p-5 text-center">
+              <p className="text-sm text-[#7a5a67]">Sign in to view your Beauty Book conversations.</p>
+              <Link href="/login" className="mt-3 inline-flex rounded-xl bg-[var(--pink)] px-4 py-2 text-sm font-semibold text-white">
+                Sign in
+              </Link>
+            </div>
+          ) : conversations.length === 0 ? (
+            <div className="rounded-2xl border border-[#ececec] bg-white p-5 text-center">
+              <p className="text-sm font-medium text-[#2C1A23]">No conversations yet</p>
+              <p className="mt-1 text-xs text-[#7a5a67]">Message a technician from their profile to keep the conversation inside the app.</p>
+              <Link href="/search" className="mt-3 inline-flex rounded-xl bg-[var(--pink)] px-4 py-2 text-sm font-semibold text-white">
+                Find a technician
+              </Link>
+            </div>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-[260px_1fr]">
+              <div className="space-y-2">
+                {conversations.map((conversation) => (
+                  <button
+                    key={conversation.id}
+                    type="button"
+                    onClick={() => setSelectedConversationId(conversation.id)}
+                    className={`w-full rounded-2xl border p-3 text-left transition-colors ${
+                      selectedConversation?.id === conversation.id
+                        ? 'border-[#f3d7e3] bg-[#fff8fb]'
+                        : 'border-[#ececec] bg-white'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-[#1f1f1f] truncate">{conversation.professional?.name}</p>
+                      <MessageCircle size={14} className="shrink-0 text-[var(--pink)]" />
+                    </div>
+                    <p className="mt-1 text-xs text-[#7a5a67] truncate">{conversation.lastMessage?.body || 'No messages yet'}</p>
+                    <p className="mt-1 text-[10px] text-[#bba0ab]">{new Date(conversation.lastMessageAt).toLocaleString()}</p>
+                  </button>
+                ))}
+              </div>
+
+              <div className="rounded-2xl border border-[#ececec] bg-white p-4">
+                <div className="border-b border-[#f0f0f0] pb-3">
+                  <Link href={`/professionals/${selectedConversation.professional?.id}`} className="text-sm font-semibold text-[#1f1f1f] hover:text-[var(--pink)]">
+                    {selectedConversation.professional?.name}
+                  </Link>
+                  <p className="text-xs text-[#7a5a67]">{selectedConversation.professional?.city}, {selectedConversation.professional?.state}</p>
+                </div>
+
+                <div className="mt-3 max-h-[320px] space-y-2 overflow-y-auto pr-1">
+                  {selectedConversation.messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`max-w-[88%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap ${
+                        message.mine
+                          ? 'ml-auto bg-[var(--pink)] text-white'
+                          : 'bg-[#fafafa] border border-[#ececec] text-[#444]'
+                      }`}
+                    >
+                      <p>{message.body}</p>
+                      <p className={`mt-1 text-[10px] ${message.mine ? 'text-white/80' : 'text-[#999]'}`}>
+                        {new Date(message.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-3 space-y-2">
+                  <textarea
+                    value={messageDraft}
+                    onChange={(e) => setMessageDraft(e.target.value)}
+                    placeholder={`Reply to ${selectedConversation.professional?.name}...`}
+                    className="min-h-[96px] w-full rounded-xl border border-[#e7e5e4] bg-[#fafaf9] px-3 py-2 text-sm outline-none focus:border-[#1f1f1f]"
+                  />
+                  <button
+                    type="button"
+                    onClick={sendMessage}
+                    disabled={messageSending}
+                    className="rounded-xl bg-[var(--pink)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                  >
+                    {messageSending ? 'Sending...' : 'Send reply'}
+                  </button>
+                  {messageError ? <p className="text-xs text-[#b42318]">{messageError}</p> : null}
+                </div>
+              </div>
+            </div>
+          )
+        )}
       </div>
+
+      {bookingToCancel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2c1a23]/40 px-4">
+          <div className="w-full max-w-sm rounded-3xl border border-[#f0d9e3] bg-white p-5 shadow-[0_24px_60px_rgba(44,26,35,0.18)]">
+            <h2 className="text-lg font-semibold text-[#1f1f1f]">Cancel Appointment?</h2>
+            <p className="mt-2 text-sm text-[#666]">
+              Are you sure you want to cancel your appointment request with {bookingToCancel.professional?.name} scheduled for {new Date(bookingToCancel.date).toLocaleString()}?
+            </p>
+            {cancelError ? <p className="mt-3 text-xs text-[#b42318]">{cancelError}</p> : null}
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (cancelLoading) return
+                  setBookingToCancel(null)
+                  setCancelError('')
+                }}
+                className="flex-1 rounded-xl border border-[#f0d9e3] px-4 py-2 text-sm font-semibold text-[var(--pink-ink)]"
+              >
+                Keep appointment
+              </button>
+              <button
+                type="button"
+                onClick={confirmCancelBooking}
+                disabled={cancelLoading}
+                className="flex-1 rounded-xl bg-[#b42318] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {cancelLoading ? 'Canceling...' : 'Yes, cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

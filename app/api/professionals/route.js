@@ -52,7 +52,14 @@ export async function GET(req) {
       prisma.professional.count({ where }),
     ])
 
-    return NextResponse.json({ professionals, total, pages: Math.ceil(total / limit) })
+    return NextResponse.json(
+      { professionals, total, pages: Math.ceil(total / limit) },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+        },
+      }
+    )
   } catch (err) {
     console.error(err)
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
