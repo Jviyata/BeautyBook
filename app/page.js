@@ -58,9 +58,9 @@ export default function HomePage() {
   useEffect(() => {
     const checkScroll = () => {
       if (galleryRef.current) {
-        const { scrollLeft, scrollWidth, clientWidth } = galleryRef.current
-        setCanScrollLeft(scrollLeft > 0)
-        setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10)
+        const { scrollTop, scrollHeight, clientHeight } = galleryRef.current
+        setCanScrollLeft(scrollTop > 0)
+        setCanScrollRight(scrollTop < scrollHeight - clientHeight - 10)
       }
     }
 
@@ -124,7 +124,7 @@ export default function HomePage() {
     if (galleryRef.current) {
       const scrollAmount = 320
       galleryRef.current.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        top: direction === 'up' ? -scrollAmount : scrollAmount,
         behavior: 'smooth',
       })
     }
@@ -287,39 +287,18 @@ export default function HomePage() {
               </Link>
             </div>
 
-            <div className="relative">
-              {/* Scroll Buttons */}
-              {canScrollLeft && (
-                <button
-                  onClick={() => scroll('left')}
-                  className="absolute left-0 top-1/2 -translate-y-1/2 -ml-4 sm:-ml-3 z-10 bg-white/95 backdrop-blur border border-[#e7e5e4] rounded-full p-2 shadow-md hover:shadow-lg transition-all hidden sm:flex items-center justify-center"
-                  aria-label="Scroll left"
-                >
-                  <ChevronLeft size={18} className="text-[#1f1f1f]" />
-                </button>
-              )}
-
-              {canScrollRight && (
-                <button
-                  onClick={() => scroll('right')}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 -mr-4 sm:-mr-3 z-10 bg-white/95 backdrop-blur border border-[#e7e5e4] rounded-full p-2 shadow-md hover:shadow-lg transition-all hidden sm:flex items-center justify-center"
-                  aria-label="Scroll right"
-                >
-                  <ChevronRight size={18} className="text-[#1f1f1f]" />
-                </button>
-              )}
-
-              {/* Gallery Container */}
+            <div className="relative h-[600px] sm:h-[700px]">
+              {/* Gallery Container - Vertical Scroll */}
               <div
                 ref={galleryRef}
-                className="flex gap-3 sm:gap-4 overflow-x-auto no-scrollbar scroll-smooth px-2 sm:px-4 -mx-2 sm:-mx-4 pb-2"
+                className="flex flex-col gap-3 sm:gap-4 overflow-y-auto overflow-x-hidden h-full w-full scroll-smooth px-2 sm:px-4 pb-4"
               >
                 {GALLERY.map(item => (
                   <article
                     key={item.title}
-                    className="flex-shrink-0 w-[280px] sm:w-[300px] group overflow-hidden rounded-xl sm:rounded-2xl bg-white border border-[#e7e5e4] hover:border-[var(--pink-pale)] shadow-sm hover:shadow-lg transition-all duration-300"
+                    className="flex-shrink-0 w-full group overflow-hidden rounded-xl sm:rounded-2xl bg-white border border-[#e7e5e4] hover:border-[var(--pink-pale)] shadow-sm hover:shadow-lg transition-all duration-300"
                   >
-                    <div className="relative w-full aspect-square overflow-hidden bg-[#f5f5f4]">
+                    <div className="relative w-full h-64 sm:h-80 overflow-hidden bg-[#f5f5f4]">
                       <img 
                         src={item.image} 
                         alt={item.title} 
@@ -398,8 +377,8 @@ export default function HomePage() {
               </div>
 
               {/* Mobile scroll indicator */}
-              <div className="flex items-center justify-center gap-1 mt-3 sm:hidden">
-                <div className="text-xs text-[#a8a29e]">← Swipe to explore →</div>
+              <div className="text-center mt-4 py-4 border-t border-[#f0f0f0]">
+                <div className="text-xs text-[#a8a29e]">↑ Scroll to see more posts ↓</div>
               </div>
             </div>
           </div>
