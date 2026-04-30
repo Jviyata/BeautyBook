@@ -235,25 +235,22 @@ export default function HomePage() {
               </Link>
             </div>
 
-            <div className="flex gap-4 overflow-x-auto no-scrollbar pb-1 snap-x snap-mandatory">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               {GALLERY.map(item => (
                 <article
                   key={item.title}
-                  className="snap-start shrink-0 w-[86vw] sm:w-[460px] lg:w-[500px] overflow-hidden rounded-3xl bg-white border border-[#e7e5e4] shadow-sm"
+                  className="group overflow-hidden rounded-xl sm:rounded-2xl bg-white border border-[#e7e5e4] hover:border-[var(--pink-pale)] shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer"
                 >
-                  <div className="relative h-[280px] sm:h-[320px] overflow-hidden">
-                    <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
-                    <div className="absolute inset-x-0 top-0 p-4 flex items-center justify-between">
-                      <div className="flex items-center gap-3 rounded-full bg-white/92 backdrop-blur px-3 py-2 border border-[#e7e5e4]">
-                        <div className="w-9 h-9 rounded-full bg-[#1f1f1f] text-white flex items-center justify-center text-xs font-semibold">
-                          {item.friend.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold text-[#1f1f1f]">Shared by {item.friend}</p>
-                          <p className="text-[11px] text-[#78716c]">Result with {item.tech}</p>
-                        </div>
-                      </div>
-                      <div className="rounded-full bg-white/92 backdrop-blur px-2.5 py-1.5 border border-[#f3d7e3] flex items-center gap-1">
+                  <div className="relative w-full aspect-square overflow-hidden bg-[#f5f5f4]">
+                    <img 
+                      src={item.image} 
+                      alt={item.title} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                    />
+                    
+                    {/* Overlay on hover */}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 flex flex-col items-end justify-start p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <div className="rounded-full bg-white/95 backdrop-blur px-2.5 py-1.5 border border-[#f3d7e3] flex items-center gap-1">
                         <Star size={12} className="fill-[var(--pink)] text-[var(--pink)]" />
                         <span className="text-xs font-semibold text-[#1f1f1f]">{item.rating}.0</span>
                       </div>

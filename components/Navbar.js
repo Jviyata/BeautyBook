@@ -1,11 +1,10 @@
 'use client'
 import Link from 'next/link'
-import { Home, Search, Heart, User } from 'lucide-react'
+import { Home, Search, User } from 'lucide-react'
 
 const NAVBAR_ITEMS = [
   { id: 'home',    label: 'Home',    href: '/',        Icon: Home },
   { id: 'search',  label: 'Explore', href: '/search',  Icon: Search },
-  { id: 'saved',   label: 'Saved',   href: '/saved',   Icon: Heart },
   { id: 'profile', label: 'Profile', href: '/profile', Icon: User },
 ]
 
