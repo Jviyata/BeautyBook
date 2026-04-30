@@ -197,11 +197,10 @@ export default function DemoSearch() {
                       <button
                         key={rating}
                         onClick={() => setMinRating(rating)}
-                        className={`px-2 py-1 text-xs rounded border ${
-                          minRating === rating
-                            ? 'bg-[#D4537E] text-white border-[#D4537E]'
-                            : 'bg-[#fdf6f9] border-[#F4C0D1] text-[#7a5a67]'
-                        }`}
+                        className={`px-2 py-1 text-xs rounded border ${minRating === rating
+                          ? 'bg-[#D4537E] text-white border-[#D4537E]'
+                          : 'bg-[#fdf6f9] border-[#F4C0D1] text-[#7a5a67]'
+                          }`}
                       >
                         {rating === 0 ? 'Any' : rating + '+'}
                       </button>
@@ -240,26 +239,26 @@ export default function DemoSearch() {
                         />
                       )}
                       <button
-  type="button"
-  onClick={(e) => {
-    e.preventDefault()
-    setLiked((prev) => ({
-      ...prev,
-      [professional.id]: !prev[professional.id],
-    }))
-  }}
-  className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 border border-[#F4C0D1] flex items-center justify-center shadow-sm"
-  aria-label="Like professional"
->
-  <Heart
-    size={19}
-    className={
-      liked[professional.id]
-        ? 'fill-[#D4537E] text-[#D4537E]'
-        : 'text-[#D4537E]'
-    }
-  />
-</button>
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          setLiked((prev) => ({
+                            ...prev,
+                            [professional.id]: !prev[professional.id],
+                          }))
+                        }}
+                        className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 border border-[#F4C0D1] flex items-center justify-center shadow-sm"
+                        aria-label="Like professional"
+                      >
+                        <Heart
+                          size={19}
+                          className={
+                            liked[professional.id]
+                              ? 'fill-[#D4537E] text-[#D4537E]'
+                              : 'text-[#D4537E]'
+                          }
+                        />
+                      </button>
 
                     </div>
 
@@ -283,11 +282,10 @@ export default function DemoSearch() {
                             <Star
                               key={i}
                               size={12}
-                              className={`${
-                                i < Math.floor(professional.avgRating)
-                                  ? 'fill-[#D4537E] text-[#D4537E]'
-                                  : 'text-[#F4C0D1]'
-                              }`}
+                              className={`${i < Math.floor(professional.avgRating)
+                                ? 'fill-[#D4537E] text-[#D4537E]'
+                                : 'text-[#F4C0D1]'
+                                }`}
                             />
                           ))}
                         </div>
