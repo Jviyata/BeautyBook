@@ -116,9 +116,9 @@ export default function RegisterPage() {
           <button
             type="button"
             onClick={() => setAccountType('tech')}
-            className={`rounded-lg py-2 text-xs font-medium transition-colors ${
-              accountType === 'tech' ? 'bg-white text-[#2C1A23] border border-[#F4C0D1]' : 'text-[#7a5a67]'
-            }`}
+            disabled
+            title="Coming soon"
+            className="rounded-lg py-2 text-xs font-medium transition-colors text-[#d4c5cc] cursor-not-allowed opacity-50"
           >
             Tech
           </button>
