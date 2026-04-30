@@ -2,10 +2,9 @@
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { Search, Sparkles, Star, ArrowRight, Heart, TrendingUp, ChevronLeft, ChevronRight, MessageCircle, Share2 } from 'lucide-react'
+import { Search, Star, ArrowRight, Heart, TrendingUp, ChevronLeft, ChevronRight, MessageCircle, Share2 } from 'lucide-react'
 import Link from 'next/link'
 import Navbar from '@/components/Navbar'
-import ChatBot from '@/components/ChatBot'
 import { ServiceIcons, ServiceColors } from '@/lib/serviceIcons'
 import { CATEGORIES, STORIES, GALLERY, FEATURED } from '@/lib/homePageData'
 
@@ -14,7 +13,6 @@ export default function HomePage() {
   const { data: session, status } = useSession()
   const [query, setQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState('All')
-  const [showChat, setShowChat] = useState(false)
   const [saved, setSaved] = useState({})
   const [likes, setLikes] = useState({})
   const galleryRef = useRef(null)
@@ -384,24 +382,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section>
-          <button
-            onClick={() => setShowChat(true)}
-            className="accent-cta w-full flex items-center gap-3 rounded-2xl px-4 sm:px-5 py-4 transition-colors"
-          >
-            <div className="w-8 sm:w-9 h-8 sm:h-9 rounded-full bg-white/10 flex items-center justify-center shrink-0">
-              <Sparkles size={16} className="sm:w-[18px] sm:h-[18px]" />
-            </div>
-            <div className="text-left flex-1">
-              <p className="text-sm font-semibold">Ask BeautyBot</p>
-              <p className="text-xs text-white/60">Get personalised recommendations</p>
-            </div>
-            <ArrowRight size={16} className="text-white/60" />
-          </button>
-        </section>
       </main>
-
-      {showChat && <ChatBot onClose={() => setShowChat(false)} />}
     </div>
   )
 }

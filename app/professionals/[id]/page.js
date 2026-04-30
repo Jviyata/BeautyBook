@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { Star, MapPin, Phone, Instagram, Globe, Heart, ArrowLeft, Clock, ChevronDown, ChevronUp, MessageCircle } from 'lucide-react'
+import { Star, MapPin, Phone, Instagram, Globe, Heart, ArrowLeft, Clock, ChevronDown, ChevronUp } from 'lucide-react'
 import Navbar from '@/components/Navbar'
 import ReviewForm from '@/components/ReviewForm'
 
@@ -91,7 +91,6 @@ export default function ProfessionalPage() {
   const [showReviewForm, setShowReviewForm] = useState(false)
   const [conversation, setConversation] = useState(null)
   const [conversationLoading, setConversationLoading] = useState(false)
-  const [chatOpen, setChatOpen] = useState(false)
   const [messageDraft, setMessageDraft] = useState('')
   const [sendingMessage, setSendingMessage] = useState(false)
   const [messageError, setMessageError] = useState('')
@@ -604,101 +603,7 @@ export default function ProfessionalPage() {
         </section>
       </main>
 
-      <div className="fixed bottom-2 right-3 left-3 z-40 md:left-auto md:right-5 md:w-[380px]">
-        <div className="overflow-hidden rounded-3xl border border-[#f0d9e3] bg-white shadow-[0_18px_40px_rgba(127,41,77,0.18)]">
-          <button
-            type="button"
-            onClick={() => setChatOpen((current) => !current)}
-            className="flex w-full items-center justify-between gap-3 bg-[var(--pink)] px-4 py-3 text-left text-white"
-          >
-            <div className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20">
-                <MessageCircle size={18} />
-              </div>
-              <div>
-                <p className="text-sm font-semibold">Message {pro.name}</p>
-              </div>
-            </div>
-            {chatOpen ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
-          </button>
 
-          {chatOpen && (
-            <div className="border-t border-[#f3d7e3] bg-[#fffbfd] p-4">
-              {!session?.user ? (
-                <div className="rounded-2xl border border-[#f0d9e3] bg-[#fff8fb] p-4">
-                  <p className="text-sm text-[#7a5a67]">Sign in to start messaging this technician inside the app.</p>
-                  <button
-                    type="button"
-                    onClick={() => router.push(`/login?callbackUrl=/professionals/${id}`)}
-                    className="mt-3 rounded-xl bg-[var(--pink)] px-4 py-2 text-sm font-semibold text-white"
-                  >
-                    Sign in to message
-                  </button>
-                </div>
-              ) : session.user.role === 'TECH' ? (
-                <div className="rounded-2xl border border-[#f0d9e3] bg-[#fff8fb] p-4">
-                  <p className="text-sm text-[#7a5a67]">Technicians manage conversations from the dashboard inbox.</p>
-                  <button
-                    type="button"
-                    onClick={() => router.push('/tech/messages')}
-                    className="mt-3 rounded-xl bg-[var(--pink)] px-4 py-2 text-sm font-semibold text-white"
-                  >
-                    Open inbox
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <div className="rounded-2xl border border-[#ececec] bg-white p-3">
-                    <div className="max-h-[280px] space-y-2 overflow-y-auto pr-1">
-                      {conversationLoading ? (
-                        <p className="text-sm text-[#777]">Loading conversation...</p>
-                      ) : conversation?.messages?.length ? (
-                        conversation.messages.map((item) => (
-                          <div
-                            key={item.id}
-                            className={`max-w-[88%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap ${
-                              item.mine
-                                ? 'ml-auto bg-[var(--pink)] text-white'
-                                : 'bg-[#fff8fb] border border-[#ececec] text-[#444]'
-                            }`}
-                          >
-                            <p>{item.body}</p>
-                            <p className={`mt-1 text-[10px] ${item.mine ? 'text-white/80' : 'text-[#999]'}`}>
-                              {new Date(item.createdAt).toLocaleString()}
-                            </p>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-sm text-[#777]">No messages yet. Start the conversation here.</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <form onSubmit={handleSendMessage} className="mt-3 space-y-2.5">
-                    <textarea
-                      value={messageDraft}
-                      onChange={(e) => setMessageDraft(e.target.value)}
-                      placeholder={`Message ${pro.name} about availability, timing, or service details...`}
-                      className="min-h-[96px] w-full rounded-xl border border-[#e7e5e4] bg-white px-3 py-2 text-sm outline-none focus:border-[#1f1f1f]"
-                    />
-
-                    <div className="flex items-center justify-between gap-3">
-                      <button
-                        type="submit"
-                        disabled={sendingMessage}
-                        className="rounded-xl bg-[#1f1f1f] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-                      >
-                        {sendingMessage ? 'Sending...' : 'Send Message'}
-                      </button>
-                      {messageError ? <p className="text-xs text-[#b42318] text-right">{messageError}</p> : null}
-                    </div>
-                  </form>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
 
       {showBookingSuccessModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2c1a23]/40 px-4">
