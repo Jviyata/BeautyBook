@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Search, MapPin, Star, SlidersHorizontal } from 'lucide-react'
+import { Search, MapPin, Star, SlidersHorizontal, Heart } from 'lucide-react'
 import Link from 'next/link'
 import { ServiceIcons, ServiceColors } from '@/lib/serviceIcons'
 
@@ -72,6 +72,7 @@ export default function DemoSearch() {
   const [style, setStyle] = useState('Any')
   const [showFilters, setShowFilters] = useState(false)
   const [results, setResults] = useState([])
+  const [liked, setLiked] = useState({})
 
   useEffect(() => {
     filterResults()
@@ -238,6 +239,28 @@ export default function DemoSearch() {
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                         />
                       )}
+                      <button
+  type="button"
+  onClick={(e) => {
+    e.preventDefault()
+    setLiked((prev) => ({
+      ...prev,
+      [professional.id]: !prev[professional.id],
+    }))
+  }}
+  className="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 border border-[#F4C0D1] flex items-center justify-center shadow-sm"
+  aria-label="Like professional"
+>
+  <Heart
+    size={19}
+    className={
+      liked[professional.id]
+        ? 'fill-[#D4537E] text-[#D4537E]'
+        : 'text-[#D4537E]'
+    }
+  />
+</button>
+
                     </div>
 
                     {/* Content */}
