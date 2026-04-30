@@ -402,7 +402,7 @@ export default function ProfessionalPage() {
                 </div>
                 <div>
                   <p className="text-base font-semibold text-[#1f1f1f]">{displayRating || 'New'}</p>
-                  <p className="text-[11px] text-[var(--pink-ink)]">{pro.reviewCount || 0} written reviews</p>
+                  <p className="text-[11px] text-[var(--pink-ink)]">{pro.reviewCount || 0} reviews</p>
                 </div>
               </div>
 
